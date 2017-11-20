@@ -21,7 +21,7 @@ logger = logging.getLogger('pipeline')
 
 DATADIR = os.getenv('DATADIR')
 TAXON_INPUT = 'raw_taxons.json'
-TAXON_OUTPUT = 'clean_taxons.json'
+TAXON_OUTPUT = 'clean_taxons.csv'
 
 # Convert to uri to satisfy pd.read_json
 

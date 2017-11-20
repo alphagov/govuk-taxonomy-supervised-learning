@@ -20,11 +20,12 @@ logger = logging.getLogger('pipeline')
 # Get data file locations
 
 DATADIR = os.getenv('DATADIR')
-FILENAME = 'content.json'
+CONTENT_INPUT = 'raw_content.json'
+CONTENT_OUTPUT = 'clean_content.csv'
 
 # Convert to uri to satisfy pd.read_json
 
-DATAPATH = os.path.join(DATADIR, FILENAME)
+DATAPATH = os.path.join(DATADIR, CONTENT_INPUT)
 
 # Assert that the file exists
 
@@ -49,52 +50,14 @@ content = pd.read_json(
 )
 
 logger.info('content shape is %s: ', content.shape)
-logger.info('Printing content head %s: ', content.shape)
+logger.debug('Printing content head %s: ', content.shape)
+logger.debug('Printing content columns %s: ', content.columns)
+logger.debug('Details column type is %s: ', type(content['details'][0]))
+logger.debug("content['details'] looks like %s", content['details'][0])
 
+# Write out to intermediate csv
 
-content.head()
+OUTPATH = os.path.join(DATADIR, CONTENT_OUTPUT)
+content.to_csv(OUTPATH)
 
-
-# In[252]:
-
-
-list(content.columns.values)
-
-
-# In[254]:
-
-
-type(content['details'][0])
-
-
-# In[255]:
-
-
-content['details'][0]
-
-
-# In[256]:
-
-
-content['details'][100]
-
-
-# In[257]:
-
-
-content['details'][10000]
-
-
-# ## Plan
-# - Sort out text variable, will be a concatenation of title, description and details->body
-# - Get long by taxon
-# - many-to-one merge
-# - clean up column names
-# 
-# - check missings
-# - check dupes
-# 
-# - Do some QA of merges and reshapes. e.g. shapes before/after
-# 
-# - Export in format for EDA
-# 
+logger.info('Content written to %s', OUTPATH)
