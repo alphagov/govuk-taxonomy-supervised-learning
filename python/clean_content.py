@@ -1,36 +1,42 @@
+"""Extract content from from data/content.json
+"""
+# coding: utf-8
 
-# ## Import CONTENT data
+import json
+import io
+import os
+import logging
+import logging.config
+import numpy as np
+import pandas as pd
+import pathlib
 
-# In[248]:
+# Setup pipeline logging
 
+LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
+logging.config.fileConfig(LOGGING_CONFIG)
+logger = logging.getLogger('pipeline')
 
-# Upload content.json from 'Data science/data'
-# This is copied from the colaboratory template
+# Get data file locations
 
-file_id = '1kBHRUkOVHppGRro79Qkz-_k_3Id4BOXq' # This id relates to content.json
+DATADIR = os.getenv('DATADIR')
+FILENAME = 'content.json'
 
-request = drive_service.files().get_media(fileId=file_id)
-downloaded = io.BytesIO()
-downloader = MediaIoBaseDownload(downloaded, request)
-done = False
-while done is False:
-  # _ is a placeholder for a progress object that we ignore.
-  # (Our file is small, so we skip reporting progress.)
-  _, done = downloader.next_chunk()
-    
-downloaded.seek(0)
+# Convert to uri to satisfy pd.read_json
 
+DATAPATH = os.path.join(DATADIR, FILENAME)
 
-# In[ ]:
+# Assert that the file exists
 
+assert os.path.exists(DATAPATH), logger.error('%s does not exist', DATADIR)
 
-# Downloaded json is now a character string
+DATAPATH = pathlib.Path(DATAPATH).as_uri()
 
-json_string = downloaded.read()
+logger.info('Importing data from %s.', DATAPATH)
 
 #download the taxon data from content store for all links which are taxons
-df_content = pd.read_json(
-    json_string, 
+content = pd.read_json(
+    DATAPATH, 
     orient='table', 
     typ='frame', 
     dtype=True, 
@@ -42,47 +48,41 @@ df_content = pd.read_json(
     date_unit=None
 )
 
-
-# In[258]:
-
-
-df_content.shape
+logger.info('content shape is %s: ', content.shape)
+logger.info('Printing content head %s: ', content.shape)
 
 
-# In[251]:
-
-
-df_content.head()
+content.head()
 
 
 # In[252]:
 
 
-list(df_content.columns.values)
+list(content.columns.values)
 
 
 # In[254]:
 
 
-type(df_content['details'][0])
+type(content['details'][0])
 
 
 # In[255]:
 
 
-df_content['details'][0]
+content['details'][0]
 
 
 # In[256]:
 
 
-df_content['details'][100]
+content['details'][100]
 
 
 # In[257]:
 
 
-df_content['details'][10000]
+content['details'][10000]
 
 
 # ## Plan
