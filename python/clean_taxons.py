@@ -1,4 +1,4 @@
-"""Extract taxon hierarchy from taxons.json
+"""Extract taxon hierarchy from data/taxons.json
 """
 # coding: utf-8
 
@@ -20,11 +20,12 @@ logger = logging.getLogger('pipeline')
 # Get data file locations
 
 DATADIR = os.getenv('DATADIR')
-FILENAME = 'taxons.json'
+TAXON_INPUT = 'raw_taxons.json'
+TAXON_OUTPUT = 'clean_taxons.json'
 
 # Convert to uri to satisfy pd.read_json
 
-DATAPATH = os.path.join(DATADIR, FILENAME)
+DATAPATH = os.path.join(DATADIR, TAXON_INPUT)
 
 # Assert that the file exists
 
@@ -87,13 +88,13 @@ logger.info('Convert child_dict to pandas dataframe.')
 # Note that in python3.x the dict needs to be converted to a list. 
 # Otherwise use pd.Dataframe.from_dict.
 
-df_taxonpath = pd.DataFrame(
-    list(dict_taxonpath.items()), 
+taxonpath = pd.DataFrame(
+    list(dict_taxonpath.items()),
     columns=['content_id', 'taxonpath']
 )
 
 logger.info('The longest taxonpath is %s.', 
-        max(df_taxonpath['taxonpath'].map(len)))
+            max(taxonpath['taxonpath'].map(len)))
 
 
 # Get this taxonpath list into separate columns per taxon, 
@@ -104,13 +105,13 @@ logger.info('The longest taxonpath is %s.',
 logger.info('Separating taxon path into one column per taxon')
 
 
-split_taxonpath_to_cols = pd.concat([df_taxonpath['content_id'], 
-    df_taxonpath['taxonpath'].apply(pd.Series).loc[:,::-1]], axis = 1)
+split_taxonpath_to_cols = pd.concat([taxonpath['content_id'], 
+     taxonpath['taxonpath'].apply(pd.Series).loc[:, ::-1]], axis=1)
 
 # Hard coded so think about what to do if taxonomy gets deeper
 
-split_taxonpath_to_cols.columns = ['content_id', 'level1', 'level2', 
-        'level3', 'level4'] 
+split_taxonpath_to_cols.columns = ['content_id', 'level1', 'level2',
+         'level3', 'level4'] 
 
 # Move non empty cells to left in grouped columns pandas: 
 # https://stackoverflow.com/questions/39361839/move-non-empty-cells-to-left-in-grouped-columns-pandas/39362818#39362818
@@ -133,9 +134,9 @@ coltype = split_taxonpath_to_cols.columns.to_series().str.extract(r'(\D*)', expa
 
 logger.debug('coltype: %s', coltype)
 
-
-
-split_taxonpath_ordered = split_taxonpath_to_cols.groupby(coltype, axis=1).apply(lambda split_taxonpath_to_cols: split_taxonpath_to_cols.apply(pushna, axis=1))
+split_taxonpath_ordered = split_taxonpath_to_cols.groupby(coltype, axis=1)
+split_taxonpath_ordered = split_taxonpath_ordered.apply(lambda split_taxonpath_to_cols: 
+        split_taxonpath_to_cols.apply(pushna, axis=1))
 
 # lookup dictionary to get titles from the content_ids.
 # Although content_ids remain gold standard data quality for manipulation, 
@@ -153,10 +154,6 @@ split_taxonpath_ordered['level2taxon'] = split_taxonpath_ordered['level2'].map(i
 split_taxonpath_ordered['level3taxon'] = split_taxonpath_ordered['level3'].map(id_tit_dict)
 split_taxonpath_ordered['level4taxon'] = split_taxonpath_ordered['level4'].map(id_tit_dict)
 
-
-# In[ ]:
-
-
 # use merge to get the base path
 
 df_taxons = pd.merge(
@@ -173,33 +170,13 @@ logger.debug('Print df_taxons.columns before drop: %s', list(df_taxons.columns.v
 
 
 df_taxons.drop(['parent_content_id', 'contenttitle', '_merge'], axis=1, inplace=True)
-df_taxons.rename(columns={'title': 'taxon_name', 'level1_y': 'level1tax_id', 'level2': 'level2tax_id', 'level3': 'level3tax_id', 'level4': 'level4tax_id'}, inplace=True)
+df_taxons.rename(columns={'title': 'taxon_name', 'level1_y': 'level1tax_id', 'level2': 'level2tax_id',
+    'level3': 'level3tax_id', 'level4': 'level4tax_id'}, inplace=True)
 
 
 logger.debug('Print df_taxons.columns after drop: %s', list(df_taxons.columns.values))
 
-# ## Exploring the top levels
+OUTPATH = os.path.join(DATADIR, TAXON_OUTPUT)
+df_taxons.to_csv(OUTPATH)
 
-# Check how many top level taxons there are. 
-# A top level taxon should have no parent_content_id
-
-taxons['level1'] = taxons.where(taxons['parent_content_id'].isnull()).loc[:,'title']
-taxons['level1'].value_counts()
-
-len(set(taxons['level1']))
-
-
-# In[246]:
-
-
-level1 = taxons[taxons['parent_content_id'].isnull()]
-level1.drop(['base_path', 'parent_content_id', 'level1'], axis=1, inplace=True)
-level1
-
-
-# In[247]:
-
-
-level1.shape
-
-
+logger.info('Taxons written to %s', OUTPATH)
