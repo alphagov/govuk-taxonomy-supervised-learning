@@ -2,7 +2,7 @@
 # Run `make` to clean taxons and content.
 # Run `make init` to install requireed packages with pip.
 
-all : init taxons content
+all : taxons content
 taxons : data/clean_taxons.csv
 content : data/clean_content.csv
 

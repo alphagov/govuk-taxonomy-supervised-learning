@@ -135,6 +135,6 @@ logger.debug('content_long.head(): %s', content_long.head())
 # Write out to intermediate csv
 
 OUTPATH = os.path.join(DATADIR, CONTENT_OUTPUT)
-content.to_csv(OUTPATH)
+content_long.to_csv(OUTPATH)
 
 logger.info('Content written to %s', OUTPATH)
