@@ -22,18 +22,19 @@ logger = logging.getLogger('pipeline')
 DATADIR = os.getenv('DATADIR')
 TAXON_INPUT = 'raw_taxons.json'
 TAXON_OUTPUT = 'clean_taxons.csv'
-
-# Convert to uri to satisfy pd.read_json
-
 DATAPATH = os.path.join(DATADIR, TAXON_INPUT)
 
 # Assert that the file exists
 
 assert os.path.exists(DATAPATH), logger.error('%s does not exist', DATADIR)
 
+# Convert to uri to satisfy pd.read_json
+
 DATAPATH = pathlib.Path(DATAPATH).as_uri()
 
-logger.info('Importing data from %s.', DATAPATH)
+logger.info('Importing taxons from %s as taxons', DATAPATH)
+
+# Load taxons
 
 taxons = pd.read_json(
     DATAPATH,
@@ -48,11 +49,14 @@ taxons = pd.read_json(
     date_unit=None
 )
 
-logger.info('%s taxons loaded', taxons.shape[0])
+logger.info('taxon.shape: %s', taxons.shape[0])
 logger.debug('Printing top 5 rows of taxons: %s', taxons.head())
 
-taxons_notnan = taxons.where((pd.notnull(taxons)), None)
-child_dict = dict(zip(taxons_notnan['content_id'], taxons_notnan['parent_content_id']))
+# Convert null taxons to None and zip together into a dict
+
+taxons_notnan = taxons.where(cond=(pd.notnull(taxons)), other=None)
+child_dict = dict(zip(taxons_notnan['content_id'], 
+                  taxons_notnan['parent_content_id']))
 
 # Define a function that recursively generates the child -> tree taxon path
 
@@ -71,7 +75,7 @@ def ancestors(parent_content_id):
 # Create dictionary containg taxon id (content_id) and the taxon path 
 # within taxonomy
 
-logger.info('Iterating through child_dict')
+logger.info('Iterating through child_dict to recursively generate child -> taxon path')
 
 dict_taxonpath = {
     parent_content_id: ancestors(parent_content_id)
@@ -96,19 +100,16 @@ taxonpath = pd.DataFrame(
 logger.info('The longest taxonpath is %s.', 
             max(taxonpath['taxonpath'].map(len)))
 
-
 # Get this taxonpath list into separate columns per taxon, 
 # within the taxon path, reverse the order of the list so 
 # Left = higher up tree.
 
-
 logger.info('Separating taxon path into one column per taxon')
-
 
 split_taxonpath_to_cols = pd.concat([taxonpath['content_id'], 
      taxonpath['taxonpath'].apply(pd.Series).loc[:, ::-1]], axis=1)
 
-# Hard coded so think about what to do if taxonomy gets deeper
+# TODO: Remove hard coding of split_taxonpath_to_cols below to generalise over deeper taxonomies
 
 split_taxonpath_to_cols.columns = ['content_id', 'level1', 'level2',
          'level3', 'level4'] 
@@ -126,7 +127,8 @@ def pushna(series):
     notnull = series[series.notnull()]
     isnull = series[series.isnull()]
     values = notnull.append(isnull).values
-    return pd.Series(values, series.index)
+    out = pd.Series(values, series.index)
+    return out
 
 logger.info('Extracting coltype')
 
@@ -135,8 +137,7 @@ coltype = split_taxonpath_to_cols.columns.to_series().str.extract(r'(\D*)', expa
 logger.debug('coltype: %s', coltype)
 
 split_taxonpath_ordered = split_taxonpath_to_cols.groupby(coltype, axis=1)
-split_taxonpath_ordered = split_taxonpath_ordered.apply(lambda split_taxonpath_to_cols: 
-        split_taxonpath_to_cols.apply(pushna, axis=1))
+split_taxonpath_ordered = split_taxonpath_ordered.apply(lambda split_taxonpath_to_cols: split_taxonpath_to_cols.apply(pushna, axis=1))
 
 # lookup dictionary to get titles from the content_ids.
 # Although content_ids remain gold standard data quality for manipulation, 
@@ -145,8 +146,9 @@ split_taxonpath_ordered = split_taxonpath_ordered.apply(lambda split_taxonpath_t
 
 id_tit_dict = dict(zip(taxons_notnan['content_id'], taxons_notnan['title']))
 
-#Pull titles into the content_id df, using the lookup dict
-#hard coded so think about what to do if taxonomy gets deeper
+# Pull titles into the content_id df, using the lookup dict
+# TODO: Remove hardcoding to allow this to generalise over many columns of
+# an arbitrarily deep taxonomy.
 
 split_taxonpath_ordered['contenttitle'] = split_taxonpath_ordered['content_id'].map(id_tit_dict)
 split_taxonpath_ordered['level1taxon'] = split_taxonpath_ordered['level1'].map(id_tit_dict)
@@ -154,7 +156,7 @@ split_taxonpath_ordered['level2taxon'] = split_taxonpath_ordered['level2'].map(i
 split_taxonpath_ordered['level3taxon'] = split_taxonpath_ordered['level3'].map(id_tit_dict)
 split_taxonpath_ordered['level4taxon'] = split_taxonpath_ordered['level4'].map(id_tit_dict)
 
-# use merge to get the base path
+# Merge to get the base path
 
 df_taxons = pd.merge(
     taxons,
@@ -164,10 +166,7 @@ df_taxons = pd.merge(
     indicator=True
 )
 
-
-logger.debug('Print df_taxons.columns before drop: %s', list(df_taxons.columns.values))
-
-
+logger.debug('Printing df_taxons.columns before drop: %s', list(df_taxons.columns.values))
 
 df_taxons.drop(['parent_content_id', 'contenttitle', '_merge'], axis=1, inplace=True)
 df_taxons.rename(columns={'title': 'taxon_name', 'level1_y': 'level1tax_id', 'level2': 'level2tax_id',
