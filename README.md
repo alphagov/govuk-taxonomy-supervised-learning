@@ -4,9 +4,12 @@ Automatically tag content tags to taxons using machine learning algorithms.
 
 ## Getting the data
 
-The files `content.json` and `taxons.json` can be downloaded from the S3 bucket `s3://buod-govuk-taxonomy-supervised-learning`. Note that this S3 bucket has version control, so a complete record of all versions is available in this bucket.
+The following data files are used in this project.
 
-Once you have authenticated with amazon S3, these files can be downloaded with `aws s3 cp s3://buod-govuk-taxonomy-supervised-learning/<file> .`.
+|Name|Location|Description|Size|
+|---|---|---|---|
+|raw_taxons.json|s3://buod-govuk-taxonomy-supervised-learning/raw_taxons.json|List of taxons|1.1MB|
+|raw_content.json.gz|s3://buod-govuk-taxonomy-supervised-learning/raw_content.json|Content of GOV.UK (zipped to save space)|224MB|
 
-The file `content.json`
+The files `raw_content.json` and `raw_taxons.json` can be downloaded from the S3 bucket where they are stored with the command: `aws s3 cp s3://buod-govuk-taxonomy-supervised-learning/<file> .`. The file `raw_content.json` is stored as a `.gz` file and will need to be unzipped with `gunzip raw_content.json`.
 
