@@ -7,14 +7,14 @@ taxons : data/clean_taxons.csv
 content : data/clean_content.csv
 
 data/clean_taxons.csv : python/clean_taxons.py
-	python python/clean_taxons.py
+	python3 python/clean_taxons.py
 
 data/clean_content.csv : python/clean_content.py
-	python python/clean_content.py
+	python3 python/clean_content.py
 
 .PHONY :
 
 init :
-	pip install -r python/requirements.txt
+	pip3 install -r python/requirements.txt
 
 
