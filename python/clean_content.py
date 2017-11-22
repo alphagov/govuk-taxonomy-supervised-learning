@@ -21,7 +21,7 @@ logger = logging.getLogger('pipeline')
 # Get data file locations
 
 DATADIR = os.getenv('DATADIR')
-CONTENT_INPUT = 'raw_content.json'
+CONTENT_INPUT = 'raw_content.json.gz'
 CONTENT_OUTPUT = 'clean_content.csv'
 
 # Convert to uri to satisfy pd.read_json
@@ -38,6 +38,7 @@ logger.info('Importing data from %s.', DATAPATH)
 
 content = pd.read_json(
     DATAPATH, 
+    compression = 'gzip',
     orient='table', 
     typ='frame', 
     dtype=True, 
@@ -60,10 +61,13 @@ logger.debug('Printing top 10 from content.body: %s.', content.body[0:10])
 # Clean the html
 
 def extract_text(body):
-    
+    """
+    Extract text from html body
+
+    :param body: <str> containing html.
+    """
+    #TODO: Tidy this up!
     r = None
-    # This is horribly hacky. Previously this was failing on single new line
-    # characters.
     if body and body != '\n':
         tree = etree.HTML(body)
         r = tree.xpath('//text()')
