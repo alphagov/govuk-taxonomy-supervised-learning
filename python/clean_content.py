@@ -23,6 +23,7 @@ logger = logging.getLogger('pipeline')
 DATADIR = os.getenv('DATADIR')
 CONTENT_INPUT = 'raw_content.json.gz'
 CONTENT_OUTPUT = 'clean_content.csv'
+UNTAGGED_OUTPUT = 'untagged_content.csv'
 
 # Convert to uri to satisfy pd.read_json
 
@@ -57,6 +58,12 @@ logger.info('Extracting body from body dict')
 content = content.assign(body = [d.get('body') for d in content.details])
 
 logger.debug('Printing top 10 from content.body: %s.', content.body[0:10])
+
+#Save untagged content items
+untagged = content[content['taxons'].isnull()]
+OUTPATH = os.path.join(DATADIR, UNTAGGED_OUTPUT)
+untagged.to_csv(OUTPATH)
+logger.info('Untagged content written to %s', OUTPATH)
 
 # Clean the html
 
@@ -126,6 +133,7 @@ logger.debug('There are %s rows to be dropped', len(mask))
 logger.info('Drop rows with null taxons.')
 content_long = content_long[~mask]
 logger.debug('content_long.shape: %s', content_long.shape)
+
 
 logger.info('Extract content_id into taxon_id column.')
 content_long = content_long.assign(taxon_id = [d['content_id'] for d in content_long['taxon']])
