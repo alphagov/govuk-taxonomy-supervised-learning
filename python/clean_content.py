@@ -21,21 +21,25 @@ logger = logging.getLogger('pipeline')
 # Get data file locations
 
 DATADIR = os.getenv('DATADIR')
-CONTENT_INPUT = 'raw_content.json.gz'
-CONTENT_OUTPUT = 'clean_content.csv'
-UNTAGGED_OUTPUT = 'untagged_content.csv'
+CONTENT_INPUT_FILE = 'raw_content.json.gz'
+CONTENT_INPUT_PATH = os.path.join(DATADIR, CONTENT_INPUT_FILE)
+
+CONTENT_OUTPUT_FILE = 'clean_content.csv'
+CONTENT_OUTPUT_PATH = os.path.join(DATADIR, CONTENT_OUTPUT_FILE)
+
+UNTAGGED_OUTPUT_FILE = 'untagged_content.csv'
+UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, UNTAGGED_OUTPUT_FILE)
 
 # Convert to uri to satisfy pd.read_json
 
-DATAPATH = os.path.join(DATADIR, CONTENT_INPUT)
 
 # Assert that the file exists
 
 assert os.path.exists(DATAPATH), logger.error('%s does not exist', DATADIR)
 
-DATAPATH = pathlib.Path(DATAPATH).as_uri()
+CONTENT_INPUT_PATH_URI = pathlib.Path(CONTENT_INPUT_PATH).as_uri()
 
-logger.info('Importing data from %s.', DATAPATH)
+logger.info('Importing data from %s.', CONTENT_INPUT_PATH_URI)
 
 content = pd.read_json(
     DATAPATH, 
@@ -61,8 +65,7 @@ logger.debug('Printing top 10 from content.body: %s.', content.body[0:10])
 
 #Save untagged content items
 untagged = content[content['taxons'].isnull()]
-OUTPATH = os.path.join(DATADIR, UNTAGGED_OUTPUT)
-untagged.to_csv(OUTPATH)
+untagged.to_csv(UNTAGGED_OUTPUT_PATH)
 logger.info('Untagged content written to %s', OUTPATH)
 
 # Clean the html
@@ -146,7 +149,6 @@ logger.debug('content_long.head(): %s', content_long.head())
 
 # Write out to intermediate csv
 
-OUTPATH = os.path.join(DATADIR, CONTENT_OUTPUT)
-content_long.to_csv(OUTPATH)
+content_long.to_csv(CONTENT_OUTPUT_PATH)
 
-logger.info('Content written to %s', OUTPATH)
+logger.info('Content written to %s', CONTENT_OUTPUT_PATH)
