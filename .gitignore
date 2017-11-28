@@ -3,3 +3,5 @@
 data
 .envrc
 tax_SL
+checkpoints
+python/notebooks/tf_logs
