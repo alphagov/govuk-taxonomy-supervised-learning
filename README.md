@@ -7,6 +7,16 @@ Automatically tag content tags to taxons using machine learning algorithms.
 * Python 3.4.6
 * See [requirements.txt](requirements.txt) for python dependencies
 
+## Setting environment variables
+
+A number of environment variables need to be set before running the cleaning scripts on your system:
+
+|ENV VAR|Description|Nominal value|
+|---|---|---|
+|DATADIR|Path to the directory storing the data|`./data` (relative to the root of the repository -- you may need to set an absolute path)|
+|LOGGING_CONFIG|Path to the logging configuration file|`./python/logging.conf` (relative to the root of the repository -- you may need to set an absolute path)|
+|S3BUCKET|Path of the S3 bucket in which the data are stored.|s3://buod-govuk-taxonomy-supervised-learning|
+
 ## Getting the data
 
 The following data files are used in this project.
@@ -15,6 +25,8 @@ The following data files are used in this project.
 |---|---|---|---|---|
 |raw_taxons.json|s3://buod-govuk-taxonomy-supervised-learning/raw_taxons.json|List of taxons|1.1MB|2017-11-22|
 |raw_content.json.gz|s3://buod-govuk-taxonomy-supervised-learning/raw_content.json|Content of GOV.UK (zipped to save space)|224MB|2017-11-22|
+
+If these files do not exist in DATADIR, they will be created by Makefile by running `make`.
 
 The files `raw_content.json` and `raw_taxons.json` can be downloaded from the S3 bucket where they are stored using the `aws s3 cp` command. This command works exactly like the bash `cp`, e.g.: to copy a file from the s3 bucket to your local machine:
 
@@ -31,15 +43,6 @@ aws s3 cp s3://buod-govuk-taxonomy-supervised-learning/<file> <local file>
 __NOTE: The s3 bucket is version controlled, so you do not need to rename the files to reflect the date files were produced. Just overwrite the existing file with the same filename.__
 
 Some files are stored compressed like `raw_content.json.gz`. Do not decompress these files, as the data cleaning scripts will load the data from the compressed files automatically.
-
-## Setting environment variables
-
-A number of environment variables need to be set before running the cleaning scripts on your system:
-
-|ENV VAR|Description|Nominal value|
-|---|---|---|
-|DATADIR|Path to the directory storing the data|`./data` (relative to the root of the repository -- you may need to set an absolute path)|
-|LOGGING_CONFIG|Path to the logging configuration file|`./python/logging.conf` (relative to the root of the repository -- you may need to set an absolute path)|
 
 ## Running the cleaning scripts
 
