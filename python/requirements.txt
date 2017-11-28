@@ -3,3 +3,10 @@ pandas==0.21.0
 matplotlib==2.1.0
 lxml==4.1.1
 numpy==1.13.3
+Keras==2.1.1
+tensorflow==1.4.0
+tensorflow-tensorboard==0.4.0rc3
+scikit-learn==0.19.1
+deap==1.2.2
+tqdm==4.19.4
+stopit==1.1.1
