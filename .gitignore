@@ -1,7 +1,7 @@
-.ipynb_checkpoints
 .env
-data
 .envrc
 tax_SL
+.ipynb_checkpoints
 checkpoints
-python/notebooks/tf_logs
+*/tf_logs
+data
