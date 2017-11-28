@@ -1,6 +1,6 @@
 # Makefile 
 # Run `make` to clean taxons and content.
-# Run `make init` to install requireed packages with pip.
+# Run `make init` to install required packages with pip.
 
 all : taxons content
 taxons : data/clean_taxons.csv

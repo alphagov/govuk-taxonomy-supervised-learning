@@ -1,6 +1,7 @@
-.ipynb_checkpoints
 .env
-data
 .envrc
 tax_SL
-tf_logs
+.ipynb_checkpoints
+checkpoints
+*/tf_logs
+data
