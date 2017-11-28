@@ -4,7 +4,7 @@ Automatically tag content tags to taxons using machine learning algorithms.
 
 ## Requirements
 
-* Python 3.4.3
+* Python 3.4.6
 * See [requirements.txt](requirements.txt) for python dependencies
 
 ## Getting the data
