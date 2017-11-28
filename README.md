@@ -2,6 +2,11 @@
 
 Automatically tag content tags to taxons using machine learning algorithms.
 
+## Requirements
+
+* Python 3.4.3
+* See [requirements.txt](requirements.txt) for python dependencies
+
 ## Getting the data
 
 The following data files are used in this project.
@@ -36,4 +41,20 @@ A number of environment variables need to be set before running the cleaning scr
 |DATADIR|Path to the directory storing the data|`./data` (relative to the root of the repository -- you may need to set an absolute path)|
 |LOGGING_CONFIG|Path to the logging configuration file|`./python/logging.conf` (relative to the root of the repository -- you may need to set an absolute path)|
 
+## Running the cleaning scripts
 
+There is a Makefile which can be run to execute the cleaning scripts. After downloading the data to an appropriate dir, and pointing at it with the env vars, you can install python dependencies by running `make init`.
+
+Once complete, running `make` will launch the cleaning scripts, creating two files:
+
+* data/clean_taxons.csv
+* data/clean_content.csv
+
+These cleaned files are used by the python notebooks contained in `python/notebooks`.
+
+## Logging
+
+The default logging configuration (set in `./python/`) will do the following things:
+
+* Write a simple log to stdout (console) at `INFO` level
+* Write a more detailed log to a file at `DEBUG` level (by default `/tmp/govuk-taxonomy-supervised-learning.log`).
