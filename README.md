@@ -26,3 +26,14 @@ aws s3 cp s3://buod-govuk-taxonomy-supervised-learning/<file> <local file>
 __NOTE: The s3 bucket is version controlled, so you do not need to rename the files to reflect the date files were produced. Just overwrite the existing file with the same filename.__
 
 Some files are stored compressed like `raw_content.json.gz`. Do not decompress these files, as the data cleaning scripts will load the data from the compressed files automatically.
+
+## Setting environment variables
+
+A number of environment variables need to be set before running the cleaning scripts on your system:
+
+|ENV VAR|Description|Nominal value|
+|---|---|---|
+|DATADIR|Path to the directory storing the data|`./data` (relative to the root of the repository -- you may need to set an absolute path)|
+|LOGGING_CONFIG|Path to the logging configuration file|`./python/logging.conf` (relative to the root of the repository -- you may need to set an absolute path)|
+
+
