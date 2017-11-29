@@ -32,7 +32,7 @@ See README at root of repo
 ## Notebooks
 |Name|Activity|Data inputs|Data outputs|
 |---|------|---|---|
-|EDA-prepare-and-count-data|Some dataprep which will move to cleaning scripts and counting of data for baseline EDA|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz|None|
+|EDA-prepare-and-count-data|Some dataprep which will move to cleaning scripts and counting of data for baseline EDA|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz|labelled.csv, filtered.csv, taxons_cleaner.csv, old_tags.csv, empty_taxons.csv|
 |EDA|Exploratory data analysis|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz|None|
 |CNN-allgovuk.ipynb|Convolutional Neural Network of tagged content using keras framework and pre-trained word embeddings|clean_content.csv.gz, clean_taxons.csv||
 |SVM_allgovuk.ipynb|Support vector machine of tagged content|||
