@@ -11,6 +11,7 @@ import logging.config
 import numpy as np
 import pandas as pd
 from lxml import etree
+from pipeline_functions import extract_text
 
 # Setup pipeline logging
 
@@ -35,14 +36,14 @@ UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, UNTAGGED_OUTPUT_FILE)
 
 # Assert that the file exists
 
-assert os.path.exists(DATAPATH), logger.error('%s does not exist', DATADIR)
+assert os.path.exists(CONTENT_INPUT_PATH), logger.error('%s does not exist', CONTENT_INPUT_PATH)
+
+logger.info('Importing data from %s.', CONTENT_INPUT_PATH)
 
 CONTENT_INPUT_PATH_URI = pathlib.Path(CONTENT_INPUT_PATH).as_uri()
 
-logger.info('Importing data from %s.', CONTENT_INPUT_PATH_URI)
-
 content = pd.read_json(
-    DATAPATH, 
+    CONTENT_INPUT_PATH_URI, 
     compression = 'gzip',
     orient='table', 
     typ='frame', 
@@ -63,32 +64,29 @@ content = content.assign(body = [d.get('body') for d in content.details])
 
 logger.debug('Printing top 10 from content.body: %s.', content.body[0:10])
 
+logger.info('Separating untagged content')
+
 #Save untagged content items
 untagged = content[content['taxons'].isnull()]
+
+logger.debug("Checking type of untagged['first_published_at']: %s", untagged['first_published_at'].dtype)
+
+logger.debug("Creating timeseries index on untagged['first_published_at']")
+
+untagged = untagged.assign(first_published_at = pd.to_datetime(untagged['first_published_at']))
+
+logger.debug("Checking type of untagged['first_published_at']: %s", untagged['first_published_at'].dtype)
+
+logger.debug("Setting timestamp to index on untagged")
+untagged.index = untagged['first_published_at'] 
+
+logger.info('Saving untagged content to %s', UNTAGGED_OUTPUT_PATH)
 untagged.to_csv(UNTAGGED_OUTPUT_PATH)
-logger.info('Untagged content written to %s', OUTPATH)
+logger.debug('%s written to disk: %s', UNTAGGED_OUTPUT_PATH, os.path.exists('UNTAGGED_OUTPUT_PATH'))
+
+# TODO confirm that untagged content later get dropped from content
 
 # Clean the html
-
-def extract_text(body):
-    """
-    Extract text from html body
-
-    :param body: <str> containing html.
-    """
-    #TODO: Tidy this up!
-    r = None
-    if body and body != '\n':
-        tree = etree.HTML(body)
-        r = tree.xpath('//text()')
-        r = ' '.join(r)
-        r = r.strip().replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-        r = r.replace('\n', ' ').replace(',', ' ')
-        r = r.lower()
-        r = ' '.join(r.split())
-    if not r:
-        r = ' '
-    return r
 
 logger.info('Extracting text from body')
 content = content.assign(body = content['body'].apply(extract_text))
