@@ -2,9 +2,13 @@
 # Run `make` to clean taxons and content.
 # Run `make init` to install required packages with pip.
 
-all : taxons content
+all : taxons content labelled
 taxons : $(DATADIR)/clean_taxons.csv
 content : $(DATADIR)/clean_content.csv
+labelled : $(DATADIR)/labelled.csv
+
+$(DATADIR)/labelled.csv : python/labelled.py $(DATADIR)/raw_taxons.json taxons content
+	python3 python/labelled.py
 
 $(DATADIR)/clean_taxons.csv : python/clean_taxons.py $(DATADIR)/raw_taxons.json
 	python3 python/clean_taxons.py

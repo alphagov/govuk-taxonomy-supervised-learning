@@ -166,10 +166,7 @@ logger.debug('df_taxons.shape: %s', df_taxons.shape)
 logger.debug('Printing df_taxons.columns before drop: %s', list(df_taxons.columns.values))
 
 df_taxons.drop(['parent_content_id', 'contenttitle', '_merge'], axis=1, inplace=True)
-df_taxons.rename(columns={'title': 'taxon_name', 'level1_y': 'level1tax_id', 
-    'level2': 'level2tax_id', 'level3': 'level3tax_id',
-    'level4': 'level4tax_id'}, 
-    inplace=True)
+df_taxons.rename(columns={'title': 'taxon_name', 'level1_y': 'level1tax_id','level2': 'level2tax_id', 'level3': 'level3tax_id', 'level4': 'level4tax_id'}, inplace=True)
 
 # For top taxons (level1) ensure that taxon)name is in level1taxon column instead of Nan
 df_taxons['level1taxon'] = df_taxons['level1taxon'].fillna(df_taxons['taxon_name'])
