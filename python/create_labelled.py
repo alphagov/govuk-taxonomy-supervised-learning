@@ -272,20 +272,28 @@ logger.info("filtered.shape after deduplication: %s", filtered.shape)
 level2_dedup = labelled.drop_duplicates(subset = ['content_id', 'level1taxon', 'level2taxon']).copy()
 
 # Replace erroneous date
+
 level2_dedup['first_published_at'] = level2_dedup['first_published_at'].str.replace('0001-01-01', '2001-01-01')
 
-logging.info("There were {} content item/taxons before removing duplicates".format(labelled.shape[0]))
-logging.info("There were {} content items, unique level2 taxon pairs after removing duplicates by content_id, level1taxon and level2taxon".format(level2_dedup.shape[0]))
+logging.info('There were %s content item/taxons before removing duplicates',
+             labelled.shape[0])
 
-#Identify and drop rows where level2 is missing
+logging.info('There were %s content items, unique level2 taxon pairs after '
+             'removing duplicates by content_id, level1taxon and level2taxon',
+             level2_dedup.shape[0])
+
+# Identify and drop rows where level2 is missing
+
 mask = pd.notnull(level2_dedup['level2taxon'])
 level1_tagged = level2_dedup[~mask].copy()
 
-logging.info("There were {} content items only tagged to level1".format(level1_tagged.shape[0]))
+logging.info('There were %s content items only tagged to level1',
+             level1_tagged.shape[0])
 
 level2_tagged = level2_dedup[mask].copy()
 
-logging.info("There are {} content items tagged to level2 or lower".format(level2_tagged.shape[0]))
+logging.info('There are %s content items tagged to level2 or lower',
+             level2_tagged.shape[0])
 
 try:
     assert level1_tagged.shape[0] + level2_tagged.shape[0] == level2_dedup.shape[0]
