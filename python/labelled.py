@@ -260,11 +260,23 @@ logger.info("filtered.shape after deduplication: %s", filtered.shape)
 
 # Write out dataframes
 
+
+if os.path.exists(LABELLED_OUTPUT_PATH):
+    logger.warning('Overwriting %s', LABELLED_OUTPUT_PATH)
+
 logger.info("Saving labelled to %s", LABELLED_OUTPUT_PATH)
 labelled.to_csv(LABELLED_OUTPUT_PATH)
 
+
+if os.path.exists(FILTERED_OUTPUT_PATH):
+    logger.warning('Overwriting %s', FILTERED_OUTPUT_PATH)
+
 logger.info("Saving filtered to %s", FILTERED_OUTPUT_PATH)
 filtered.to_csv(FILTERED_OUTPUT_PATH)
+
+
+if os.path.exists(OLD_TAGS_OUTPUT_PATH):
+    logger.warning('Overwriting %s', OLD_TAGS_OUTPUT_PATH)
 
 logger.info("Saving old_taxons to %s", OLD_TAGS_OUTPUT_PATH)
 content_old_taxons.to_csv(OLD_TAGS_OUTPUT_PATH)
@@ -272,8 +284,15 @@ content_old_taxons.to_csv(OLD_TAGS_OUTPUT_PATH)
 # NOTE: I have saved this dataframe out here. In previous versions
 # it was getting overwritten by the empty taxons csv.
 
+
+if os.path.exists(EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH):
+    logger.warning('Overwriting %s', EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH)
+
 logger.info("Saving empty_taxons_not_world to %s", EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH)
 empty_taxons_notworld.to_csv(EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH)
+
+if os.path.exists(EMPTY_TAXONS_OUTPUT_PATH):
+    logger.warning('Overwriting %s', EMPTY_TAXONS_OUTPUT_PATH)
 
 logger.info("Saving empty_taxons data to %s", EMPTY_TAXONS_OUTPUT_PATH)
 empty_taxons_notworld.to_csv(EMPTY_TAXONS_OUTPUT_PATH)
