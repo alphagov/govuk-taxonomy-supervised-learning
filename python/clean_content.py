@@ -3,15 +3,12 @@
 # coding: utf-8
 
 import json
-import io
 import os
 import pathlib
 import logging
 import logging.config
-import numpy as np
 import pandas as pd
-from lxml import etree
-from pipeline_functions import extract_text
+from pipeline_functions import extract_text, write_csv
 
 # Setup pipeline logging
 
@@ -151,9 +148,8 @@ untagged.index = untagged['first_published_at']
 
 # Save untagged content items
 
-logger.info('Saving untagged content to %s', UNTAGGED_OUTPUT_PATH)
-untagged.to_csv(UNTAGGED_OUTPUT_PATH, index = True)
-logger.debug('%s written to disk: %s', UNTAGGED_OUTPUT_PATH, os.path.exists('UNTAGGED_OUTPUT_PATH'))
+write_csv(untagged, 'Untagged content', 
+          UNTAGGED_OUTPUT_PATH, logger)
 
 logger.info('Removing content with no taxons')
 
@@ -175,7 +171,7 @@ logger.info('Creating content_wide dataframe')
 # into columns.
 
 content_wide = pd.concat([content.drop('taxons', axis=1),
-                         content['taxons'].apply(pd.Series)], axis=1)
+                          content['taxons'].apply(pd.Series)], axis=1)
 
 logger.debug('content_wide[0:10]: %s', content_wide[0:10])
 logger.debug('content_wide.shape: %s', content_wide.shape)
@@ -254,9 +250,5 @@ except AssertionError:
 
 # Write out to intermediate csv
 
-if os.path.exists(CONTENT_OUTPUT_PATH):
-    logger.warning('Overwriting %s', CONTENT_OUTPUT_PATH)
-
-content_long.to_csv(CONTENT_OUTPUT_PATH)
-
-logger.info('Content written to %s', CONTENT_OUTPUT_PATH)
+write_csv(content_long, 'Long content dataframe', 
+          CONTENT_OUTPUT_PATH, logger)

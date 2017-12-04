@@ -11,10 +11,11 @@ def write_csv(dataframe, name, path, logger):
     '''
     Write a dataframe to CSV with logging
 
-    :param dataframe: <str> A pandas dataframe to be written out. 
-    Note that this is passed as a sring and then evaluated as an 
+    :param dataframe: <str> A pandas dataframe to be written out.
+    Note that this is passed as a sring and then evaluated as an
     object to complete the logging message
     :param name: <str> Name of the object being written out.
+    This is a description that is is written to the logging message
     :param path: <str> The path to be written to
     :param logger: <logging.getLogger> Current logger
     '''
@@ -24,7 +25,13 @@ def write_csv(dataframe, name, path, logger):
 
     logger.info('Writing %s to %s', name, path)
 
-    dataframe.to_csv(path)
+    try:
+
+        dataframe.to_csv(path)
+
+    except Exception:
+        logger.exception('Error writing %s to %s', name, path)
+        raise
 
 
 # TODO: Remove recursive function reference!

@@ -32,5 +32,5 @@ init :
 test : 
 	cd python && python3 -m pytest
 
-.PHONY : init
+.PHONY : init test
 
