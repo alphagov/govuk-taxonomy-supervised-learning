@@ -5,10 +5,10 @@
 all : taxons content labelled
 taxons : $(DATADIR)/clean_taxons.csv
 content : $(DATADIR)/clean_content.csv
-labelled : $(DATADIR)/labelled.csv
+labelled : $(DATADIR)/create_labelled.csv
 
-$(DATADIR)/labelled.csv : python/labelled.py $(DATADIR)/raw_taxons.json taxons content
-	python3 python/labelled.py
+$(DATADIR)/create_labelled.csv : python/create_labelled.py $(DATADIR)/raw_taxons.json taxons content
+	python3 python/create_labelled.py
 
 $(DATADIR)/clean_taxons.csv : python/clean_taxons.py $(DATADIR)/raw_taxons.json
 	python3 python/clean_taxons.py
