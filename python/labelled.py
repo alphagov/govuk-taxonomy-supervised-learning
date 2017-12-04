@@ -26,7 +26,11 @@ EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv')
 LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv')
 FILTERED_OUTPUT_PATH = os.path.join(DATADIR, 'filtered.csv')
 OLD_TAGS_OUTPUT_PATH = os.path.join(DATADIR, 'old_tags.csv')
-EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_tags.csv')
+EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_tags.csv') #what's different about this and empyty taxons?
+LABELLED_LEVEL1_OUTPUT_PATH = os.path.join(DATADIR, 'labelled_level1.csv')
+LABELLED_LEVEL2_OUTPUT_PATH = os.path.join(DATADIR, 'labelled_level2.csv')
+
+
 EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH = os.path.join(DATADIR, 'empty_tags_not_world.csv')
 
 # Import clean_content (output by clean_content.py)
@@ -258,7 +262,45 @@ logger.info("There were %s additional content items dropped due to duplicate "
 
 logger.info("filtered.shape after deduplication: %s", filtered.shape)
 
+# Create the labelled_level1 and labelled_level2 dfs
+
+# Only keep rows where level1/level2 combination is unique
+level2_dedup = labelled.drop_duplicates(subset = ['content_id', 'level1taxon', 'level2taxon']).copy()
+
+# Replace erroneous date
+level2_dedup['first_published_at'] = level2_dedup['first_published_at'].str.replace('0001-01-01', '2001-01-01')
+
+logging.info("There were {} content item/taxons before removing duplicates".format(labelled.shape[0]))
+logging.info("There were {} content items, unique level2 taxon pairs after removing duplicates by content_id, level1taxon and level2taxon".format(level2_dedup.shape[0]))
+
+#Identify and drop rows where level2 is missing
+mask = pd.notnull(level2_dedup['level2taxon'])
+level1_tagged = level2_dedup[~mask].copy()
+
+logging.info("There were {} content items only tagged to level1".format(level1_tagged.shape[0]))
+
+level2_tagged = level2_dedup[mask].copy()
+
+logging.info("There are {} content items tagged to level2 or lower".format(level2_tagged.shape[0]))
+
+try:
+    assert level1_tagged.shape[0] + level2_tagged.shape[0] == level2_dedup.shape[0]
+except AssertionError:
+    logger.exception('labelled_level1 + labelled_level2 does not equal total labelled')
+    raise
+
 # Write out dataframes
+if os.path.exists(LABELLED__LEVEL1_OUTPUT_PATH):
+    logger.warning('Overwriting %s', LABELLED_LEVEL1_OUTPUT_PATH)
+
+logger.info("Saving labelled to %s", LABELLED_LEVEL1_OUTPUT_PATH)
+level1_tagged.to_csv(LABELLED_OUTPUT_PATH)
+
+if os.path.exists(LABELLED_LEVEL2_OUTPUT_PATH):
+    logger.warning('Overwriting %s', LABELLED_LEVEL2_OUTPUT_PATH)
+
+logger.info("Saving labelled to %s", LABELLED_LEVEL2_OUTPUT_PATH)
+level2_tagged.to_csv(LABELLED_LEVEL2_OUTPUT_PATH)
 
 
 if os.path.exists(LABELLED_OUTPUT_PATH):
