@@ -13,25 +13,23 @@ LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
 logging.config.fileConfig(LOGGING_CONFIG)
 logger = logging.getLogger('pipeline')
 
-# Get data file locations
+# Setup input file paths
 
 DATADIR = os.getenv('DATADIR')
-CONTENT_INPUT_FILE = 'clean_content.csv.gz'
-CONTENT_INPUT_PATH = os.path.join(DATADIR, CONTENT_INPUT_FILE)
+CONTENT_INPUT_PATH = os.path.join(DATADIR, 'clean_content.csv.gz')
+TAXONS_INPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv')
 
-TAXONS_INPUT_FILE = 'clean_taxons.csv'
-TAXONS_INPUT_PATH = os.path.join(DATADIR, TAXONS_INPUT_FILE)
+# Set file output paths
 
-UNTAGGED_OUTPUT_FILE = 'untagged_content.csv'
-UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, UNTAGGED_OUTPUT_FILE)
+UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, 'untagged_content.csv')
+EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv')
+LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv')
+FILTERED_OUTPUT_PATH = os.path.join(DATADIR, 'filtered.csv')
+OLD_TAGS_OUTPUT_PATH = os.path.join(DATADIR, 'old_tags.csv')
+EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_tags.csv')
+EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH = os.path.join(DATADIR, 'empty_tags_not_world.csv')
 
-EMPTY_TAXONS_OUTPUT_FILE = 'empty_taxons.csv'
-EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, EMPTY_TAXONS_OUTPUT_FILE)
-
-LABELLED_OUTPUT_FILE = 'labelled.csv'
-LABELLED_OUTPUT_PATH = os.path.join(DATADIR, LABELLED_OUTPUT_FILE)
-
-# Import clean_content (output py clean_content.py)
+# Import clean_content (output by clean_content.py)
 
 logger.info('Importing from %s as clean_content', CONTENT_INPUT_PATH)
 
@@ -55,6 +53,8 @@ logger.info('clean_taxons.shape: %s.', clean_taxons.shape)
 logger.debug('clean_taxons.head(): %s.', clean_taxons.head())
 logger.info('clean_taxons.columns: %s.', clean_taxons.columns)
 
+# Drop extraneous columns
+
 logger.info('Dropping extraneous columns')
 
 clean_taxons = clean_taxons[['base_path','content_id','taxon_name','level1taxon','level2taxon','level3taxon','level4taxon']].copy()
@@ -62,7 +62,7 @@ clean_taxons = clean_taxons[['base_path','content_id','taxon_name','level1taxon'
 logger.info('clean_taxons.columns: %s.', clean_taxons.columns)
 logger.info('clean_taxons.shape: %s.', clean_taxons.shape)
 
-# Merge clean_content and clean_taxons to give labelled.
+# Merge clean_content and clean_taxons to create labelled data.
 
 logger.info('Merging clean_content and clean_taxons into labelled')
 
@@ -75,21 +75,30 @@ labelled = pd.merge(
     indicator=True # so we can filter by match type
 )
 
+# Print various check results to log
+
 logger.info('labelled.shape: %s.', labelled.shape)
 logger.debug('labelled.head(): %s.', labelled.head())
 
 logger.info('labelled.columns: %s', labelled.columns)
 logger.info('Checking output of the merge: %s', labelled['_merge'].value_counts())
-logger.info("There are %s tagged content items/taxon combinations with a matching taxon", labelled['_merge'].value_counts()[2])
-logger.info("There are %s tagged content items/taxon combinations without a matching taxon", labelled['_merge'].value_counts()[0])
-logger.info("There are %s taxons with nothing tagged to them", labelled['_merge'].value_counts()[1])
+logger.info('There are %s tagged content items/taxon combinations '
+            'with a matching taxon', labelled['_merge'].value_counts()[2])
+logger.info('There are %s tagged content items/taxon combinations '
+            'without a matching taxon', labelled['_merge'].value_counts()[0])
+logger.info('There are %s taxons with nothing tagged to them', labelled['_merge'].value_counts()[1])
+
+# Rename columns after merge (some will have _x or _y appended if
+# they are duplicated across merging dataframes).
 
 labelled.rename(
     columns={'base_path_x': 'base_path', 'content_id_x': 'content_id'},
     inplace=True
 )
 
-logger.info('Checking unique content_ids from content without taxons (left_only) after merge: %s', labelled[labelled._merge == 'left_only'].content_id.nunique())
+logger.info('Checking unique content_ids from content without taxons '
+            '(left_only) after merge: %s',
+            labelled[labelled._merge == 'left_only'].content_id.nunique())
 
 # Save out empty taxons (those which have no content tagged
 # to them)
@@ -101,8 +110,6 @@ empty_taxons = labelled[labelled._merge == 'right_only']
 logger.info('empty_taxons.shape: %s', empty_taxons.shape)
 logger.info('Writing empty_taxons to %s', EMPTY_TAXONS_OUTPUT_PATH)
 
-empty_taxons.to_csv(EMPTY_TAXONS_OUTPUT_PATH)
-
 # Drop all data from labelled that did not join cleanly
 
 logger.info('Retaining only perfect matches (_merge=both) in labelled')
@@ -111,8 +118,9 @@ logger.info('labelled.shape before dropping incomplete matches: %s', labelled.sh
 labelled = labelled[labelled._merge == 'both']
 
 logger.info('labelled.shape after dropping incomplete matches: %s', labelled.shape)
-
 logger.info('Dropping duplicate rows where content_id and taxon_id match')
+
+# Drop duplicates
 
 labelled = labelled.drop_duplicates(subset=['content_id','taxon_id'])
 
@@ -134,7 +142,7 @@ filtered_taxons = filtered_taxons[filtered_taxons.level1taxon != 'Corporate info
 
 logger.info("filtered_taxons.shape after filtering 'Corporate information' top taxons: %s", filtered_taxons.shape)
 
-# Merge filtered taxons with content
+# Merge filtered taxons with content to create filtered
 
 logger.info("Merging clean_content and filtered_taxons to create filtered")
 
@@ -161,6 +169,7 @@ empty_taxons_notworld = filtered[filtered._merge == 'right_only']
 logger.info('empty_taxons_notworld.columns: %s', empty_taxons_notworld.columns)
 
 # TODO investigate why the level5taxon column has been lost here.
+
 empty_taxons_notworld = empty_taxons_notworld[
     ['base_path_y', 'content_id_y', 'taxon_name', 'level1taxon',
      'level2taxon', 'level3taxon', 'level4taxon']]
@@ -168,6 +177,7 @@ empty_taxons_notworld = empty_taxons_notworld[
 # Extract the data with no taxons (left_only) from above merge
 
 # TODO: Check whether this should be filtered of labelled
+
 content_old_taxons = filtered[
     ['base_path_x', 'content_id_x', 'document_type',
      'first_published_at', 'locale', 'primary_publishing_organisation',
@@ -200,7 +210,7 @@ logger.info("filtered.columns after tidying: %s", filtered.columns)
 
 logger.info("There are %s rows in the data before filtering", filtered.shape[0])
 logger.info("There are %s unique content items in the data before filtering", 
-        filtered.content_id.nunique())
+            filtered.content_id.nunique())
 
 # Drop any rows that were not perfectly matched in filtered taxons
 # and content. But first record shape/duplicates for later comparison
@@ -250,9 +260,20 @@ logger.info("filtered.shape after deduplication: %s", filtered.shape)
 
 # Write out dataframes
 
-#TODO tidy up exports with env vars
-labelled.to_csv('data/labelled.csv')
-#clean_taxons.to_csv('data/taxons_cleaner.csv')
-filtered.to_csv('data/filtered.csv')
-content_old_taxons.to_csv('data/old_tags.csv')
-empty_taxons_notworld.to_csv('data/empty_taxons.csv')
+logger.info("Saving labelled to %s", LABELLED_OUTPUT_PATH)
+labelled.to_csv(LABELLED_OUTPUT_PATH)
+
+logger.info("Saving filtered to %s", FILTERED_OUTPUT_PATH)
+filtered.to_csv(FILTERED_OUTPUT_PATH)
+
+logger.info("Saving old_taxons to %s", OLD_TAGS_OUTPUT_PATH)
+content_old_taxons.to_csv(OLD_TAGS_OUTPUT_PATH)
+
+# NOTE: I have saved this dataframe out here. In previous versions
+# it was getting overwritten by the empty taxons csv.
+
+logger.info("Saving empty_taxons_not_world to %s", EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH)
+empty_taxons_notworld.to_csv(EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH)
+
+logger.info("Saving empty_taxons data to %s", EMPTY_TAXONS_OUTPUT_PATH)
+empty_taxons_notworld.to_csv(EMPTY_TAXONS_OUTPUT_PATH)

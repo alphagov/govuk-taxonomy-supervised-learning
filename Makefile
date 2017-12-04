@@ -22,9 +22,8 @@ $(DATADIR)/raw_taxons.json :
 $(DATADIR)/raw_content.json.gz :
 	aws s3 cp $(S3BUCKET)/raw_content.json.gz $(DATADIR)/raw_content.json.gz
 
-.PHONY :
-
 init : 
 	pip3 install -r python/requirements.txt
 
+.PHONY : init
 
