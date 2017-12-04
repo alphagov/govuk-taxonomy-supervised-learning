@@ -21,10 +21,12 @@ A number of environment variables need to be set before running the cleaning scr
 
 The following data files are used in this project.
 
-|Name|Location|Description|Size|Updated|
-|---|---|---|---|---|
-|raw_taxons.json|s3://buod-govuk-taxonomy-supervised-learning/raw_taxons.json|List of taxons|1.1MB|2017-11-22|
-|raw_content.json.gz|s3://buod-govuk-taxonomy-supervised-learning/raw_content.json|Content of GOV.UK (zipped to save space)|224MB|2017-11-22|
+|Name|Location|Description|Size|
+|---|---|---|---|
+|raw_taxons.json|s3://buod-govuk-taxonomy-supervised-learning/raw_taxons.json|List of taxons|1.1MB|
+|raw_content.json.gz|s3://buod-govuk-taxonomy-supervised-learning/raw_content.json|Content of GOV.UK (zipped to save space)|224MB|
+|document_type_group_lookup.json|s3://buod-govuk-taxonomy-supervised-learning/document_type_group_lookup.json|Lookup table for document type groups|2KB|
+
 
 If these files do not exist in DATADIR, they will be created by Makefile by running `make`.
 
