@@ -25,11 +25,16 @@ DATADIR = os.getenv('DATADIR')
 CONTENT_INPUT_FILE = 'raw_content.json.gz'
 CONTENT_INPUT_PATH = os.path.join(DATADIR, CONTENT_INPUT_FILE)
 
+DOCUMENT_TYPE_INPUT_FILE = 'document_type_group_lookup.json'
+DOCUMENT_TYPE_PATH = os.path.join(DATADIR, DOCUMENT_TYPE_FILE)
+
 CONTENT_OUTPUT_FILE = 'clean_content.csv'
 CONTENT_OUTPUT_PATH = os.path.join(DATADIR, CONTENT_OUTPUT_FILE)
 
 UNTAGGED_OUTPUT_FILE = 'untagged_content.csv'
 UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, UNTAGGED_OUTPUT_FILE)
+
+
 
 # Convert to uri to satisfy pd.read_json
 
@@ -79,6 +84,30 @@ logger.info('Number of duplicate content_ids in raw content: %s.',
             content[content.duplicated('content_id')].shape[0])
 logger.debug('Printing head from content: %s.', content.head())
 
+#Read in lookup table for document type group
+logger.info('Importing document type group lookup from %s.',
+            DOCUMENT_TYPE_PATH)
+
+DOCUMENT_TYPE_PATH_URI = pathlib.Path(DOCUMENT_TYPE_PATH).as_uri()
+
+with open(DOCUMENT_TYPE_PATH_URI, 'r') as fp:
+    lookup_dict = json.load(fp)
+
+docgp_lookup = pd.DataFrame.from_dict(lookup_dict, orient='index')
+docgp_lookup.columns = ['document_type_gp']
+
+#Merge lookup dataframe
+content = pd.merge(
+    left=content,
+    right=docgp_lookup,
+    left_on='document_type',
+    right_index=True,
+    how='outer',
+    indicator=True
+)
+
+content.loc[df['_merge'] == 'left_only', 'document_type_gp'] = 'other'
+content.drop('_merge', axis=1, inplace=True)
 # Text body is stored in dictionary in details column of content df
 
 logger.info('Extracting body from body dict')
