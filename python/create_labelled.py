@@ -302,17 +302,12 @@ except AssertionError:
     raise
 
 # Write out dataframes
-if os.path.exists(LABELLED__LEVEL1_OUTPUT_PATH):
-    logger.warning('Overwriting %s', LABELLED_LEVEL1_OUTPUT_PATH)
 
-logger.info("Saving labelled to %s", LABELLED_LEVEL1_OUTPUT_PATH)
-level1_tagged.to_csv(LABELLED_OUTPUT_PATH)
+write_csv(level1_tagged, 'level1 tagged labelled',
+          LABELLED_LEVEL1_OUTPUT_PATH, logger)
 
-if os.path.exists(LABELLED_LEVEL2_OUTPUT_PATH):
-    logger.warning('Overwriting %s', LABELLED_LEVEL2_OUTPUT_PATH)
-
-logger.info("Saving labelled to %s", LABELLED_LEVEL2_OUTPUT_PATH)
-level2_tagged.to_csv(LABELLED_LEVEL2_OUTPUT_PATH)
+write_csv(level2_tagged, 'level2 tagged labelled',
+          LABELLED_LEVEL2_OUTPUT_PATH, logger)
 
 write_csv(labelled, 'labelled', LABELLED_OUTPUT_PATH, logger)
 
