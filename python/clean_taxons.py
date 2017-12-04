@@ -224,5 +224,9 @@ df_taxons = taxonslevels.copy()
 logger.debug('Print df_taxons.columns after drop: %s', list(df_taxons.columns.values))
 
 OUTPATH = os.path.join(DATADIR, TAXON_OUTPUT)
+
+if os.path.exists(OUTPATH):
+    logger.warning('Overwriting %s', OUTPATH)
+
 df_taxons.to_csv(OUTPATH)
 logger.info('Taxons written to %s', OUTPATH)
