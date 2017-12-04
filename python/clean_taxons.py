@@ -9,8 +9,8 @@ import logging
 import logging.config
 import numpy as np
 import pandas as pd
-from pipeline_functions import (ancestors, pushna, 
-    conjunction)
+from pipeline_functions import (ancestors, pushna, conjunction,
+                                write_csv)
 
 # Setup pipeline logging
 
@@ -21,17 +21,12 @@ logger = logging.getLogger('clean_taxons')
 # Get data file locations
 
 DATADIR = os.getenv('DATADIR')
-TAXON_INPUT = 'raw_taxons.json'
-TAXON_OUTPUT = 'clean_taxons.csv'
-DATAPATH = os.path.join(DATADIR, TAXON_INPUT)
-
-# Assert that the file exists
-
-assert os.path.exists(DATAPATH), logger.error('%s does not exist', DATADIR)
+TAXON_INPUT_PATH = os.path.join(DATADIR, 'raw_taxons.json')
+TAXON_OUTPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv')
 
 # Convert to uri to satisfy pd.read_json
 
-DATAPATH = pathlib.Path(DATAPATH).as_uri()
+DATAPATH = pathlib.Path(TAXON_INPUT_PATH).as_uri()
 
 logger.info('Importing taxons from %s as taxons', DATAPATH)
 
@@ -218,15 +213,12 @@ cond = conjunction(
 taxonslevels['level5taxon'] = np.where(cond, taxonslevels['taxon_name'], 
                                        taxonslevels['level5taxon'])
 
-#copy the working df back to taxons
+# copy the working df back to taxons
+
 df_taxons = taxonslevels.copy()
 
 logger.debug('Print df_taxons.columns after drop: %s', list(df_taxons.columns.values))
 
-OUTPATH = os.path.join(DATADIR, TAXON_OUTPUT)
+# Write out df_taxons to csv using pipeline_functions.df_taxons
 
-if os.path.exists(OUTPATH):
-    logger.warning('Overwriting %s', OUTPATH)
-
-df_taxons.to_csv(OUTPATH)
-logger.info('Taxons written to %s', OUTPATH)
+write_csv(df_taxons, 'Taxons', TAXON_OUTPUT_PATH, logger)

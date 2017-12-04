@@ -6,6 +6,7 @@ import os
 import logging
 import logging.config
 import pandas as pd
+from pipeline_functions import write_csv
 
 # Setup pipeline logging
 
@@ -168,13 +169,13 @@ logger.info("There are %s tagged content items/taxon combinations "
             "without a matching taxon", filtered['_merge'].value_counts()[0])
 logger.info("There are %s taxons with nothing tagged to them", filtered['_merge'].value_counts()[1])
 
-empty_taxons_notworld = filtered[filtered._merge == 'right_only']
+empty_taxons_not_world = filtered[filtered._merge == 'right_only']
 
-logger.info('empty_taxons_notworld.columns: %s', empty_taxons_notworld.columns)
+logger.info('empty_taxons_not_world.columns: %s', empty_taxons_not_world.columns)
 
 # TODO investigate why the level5taxon column has been lost here.
 
-empty_taxons_notworld = empty_taxons_notworld[
+empty_taxons_not_world = empty_taxons_not_world[
     ['base_path_y', 'content_id_y', 'taxon_name', 'level1taxon',
      'level2taxon', 'level3taxon', 'level4taxon']]
 
@@ -244,13 +245,16 @@ logger.info("After removing mismatches, there were %s duplicates content items, 
             shape[0])
 
 # Drop duplicates
+
 logger.info("Dropping duplicates from filtered")
 logger.info("filtered.shape before deduplication: %s", filtered.shape)
 
 pre_dedup_rows = filtered.shape[0]
 pre_dedup_unique = filtered.content_id.nunique()
 
-filtered = filtered.drop_duplicates(subset = ['content_id', 'taxon_id'])
+filtered = filtered.drop_duplicates(
+        subset=['content_id', 'taxon_id']
+    )
 
 logger.info("There were %s additional rows dropped due to duplicate "
             "content_id/taxon_id combination",
@@ -302,39 +306,18 @@ if os.path.exists(LABELLED_LEVEL2_OUTPUT_PATH):
 logger.info("Saving labelled to %s", LABELLED_LEVEL2_OUTPUT_PATH)
 level2_tagged.to_csv(LABELLED_LEVEL2_OUTPUT_PATH)
 
+write_csv(labelled, 'labelled', LABELLED_OUTPUT_PATH, logger)
 
-if os.path.exists(LABELLED_OUTPUT_PATH):
-    logger.warning('Overwriting %s', LABELLED_OUTPUT_PATH)
+write_csv(filtered, 'filtered', FILTERED_OUTPUT_PATH, logger)
 
-logger.info("Saving labelled to %s", LABELLED_OUTPUT_PATH)
-labelled.to_csv(LABELLED_OUTPUT_PATH)
-
-
-if os.path.exists(FILTERED_OUTPUT_PATH):
-    logger.warning('Overwriting %s', FILTERED_OUTPUT_PATH)
-
-logger.info("Saving filtered to %s", FILTERED_OUTPUT_PATH)
-filtered.to_csv(FILTERED_OUTPUT_PATH)
-
-
-if os.path.exists(OLD_TAGS_OUTPUT_PATH):
-    logger.warning('Overwriting %s', OLD_TAGS_OUTPUT_PATH)
-
-logger.info("Saving old_taxons to %s", OLD_TAGS_OUTPUT_PATH)
-content_old_taxons.to_csv(OLD_TAGS_OUTPUT_PATH)
+write_csv(content_old_taxons, 'old_taxons',
+          OLD_TAGS_OUTPUT_PATH, logger)
 
 # NOTE: I have saved this dataframe out here. In previous versions
 # it was getting overwritten by the empty taxons csv.
 
+write_csv(empty_taxons_not_world, 'empty_taxons_not_world',
+          EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH, logger)
 
-if os.path.exists(EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH):
-    logger.warning('Overwriting %s', EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH)
-
-logger.info("Saving empty_taxons_not_world to %s", EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH)
-empty_taxons_notworld.to_csv(EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH)
-
-if os.path.exists(EMPTY_TAXONS_OUTPUT_PATH):
-    logger.warning('Overwriting %s', EMPTY_TAXONS_OUTPUT_PATH)
-
-logger.info("Saving empty_taxons data to %s", EMPTY_TAXONS_OUTPUT_PATH)
-empty_taxons_notworld.to_csv(EMPTY_TAXONS_OUTPUT_PATH)
+write_csv(empty_taxons, 'empty_taxons',
+          EMPTY_TAXONS_OUTPUT_PATH, logger)
