@@ -17,7 +17,7 @@ from pipeline_functions import extract_text
 
 LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
 logging.config.fileConfig(LOGGING_CONFIG)
-logger = logging.getLogger('pipeline')
+logger = logging.getLogger('clean_content')
 
 # Get data file locations
 
@@ -34,11 +34,6 @@ CONTENT_OUTPUT_PATH = os.path.join(DATADIR, CONTENT_OUTPUT_FILE)
 UNTAGGED_OUTPUT_FILE = 'untagged_content.csv'
 UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, UNTAGGED_OUTPUT_FILE)
 
-
-
-# Convert to uri to satisfy pd.read_json
-
-
 # Assert that the file exists
 try:
     assert os.path.exists(CONTENT_INPUT_PATH)
@@ -48,6 +43,8 @@ except AssertionError:
 
 #Read in raw content file
 logger.info('Importing data from %s.', CONTENT_INPUT_PATH)
+
+# Convert to uri to satisfy pd.read_json
 
 CONTENT_INPUT_PATH_URI = pathlib.Path(CONTENT_INPUT_PATH).as_uri()
 

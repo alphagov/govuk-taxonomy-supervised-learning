@@ -16,7 +16,7 @@ from pipeline_functions import (ancestors, pushna,
 
 LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
 logging.config.fileConfig(LOGGING_CONFIG)
-logger = logging.getLogger('pipeline')
+logger = logging.getLogger('clean_taxons')
 
 # Get data file locations
 
