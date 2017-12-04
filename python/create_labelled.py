@@ -11,7 +11,7 @@ import pandas as pd
 
 LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
 logging.config.fileConfig(LOGGING_CONFIG)
-logger = logging.getLogger('pipeline')
+logger = logging.getLogger('create_labelled')
 
 # Setup input file paths
 
