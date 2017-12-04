@@ -29,5 +29,8 @@ $(DATADIR)/raw_content.json.gz :
 init : 
 	pip3 install -r python/requirements.txt
 
+test : 
+	cd python && python3 -m pytest
+
 .PHONY : init
 
