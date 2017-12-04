@@ -51,6 +51,7 @@ content = pd.read_json(
     date_unit=None
 )
 
+logger.debug('Asserting that content has 11 columns, as expected: {}'.format(assert content.shape[1] ==  11))
 
 logger.debug('Printing head from content: %s.', content.head())
 logger.info('Extracting body from body dict')
