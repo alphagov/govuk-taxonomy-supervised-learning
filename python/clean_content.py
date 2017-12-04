@@ -25,7 +25,7 @@ DATADIR = os.getenv('DATADIR')
 CONTENT_INPUT_FILE = 'raw_content.json.gz'
 CONTENT_INPUT_PATH = os.path.join(DATADIR, CONTENT_INPUT_FILE)
 
-DOCUMENT_TYPE_INPUT_FILE = 'document_type_group_lookup.json'
+DOCUMENT_TYPE_FILE = 'document_type_group_lookup.json'
 DOCUMENT_TYPE_PATH = os.path.join(DATADIR, DOCUMENT_TYPE_FILE)
 
 CONTENT_OUTPUT_FILE = 'clean_content.csv'
@@ -88,9 +88,7 @@ logger.debug('Printing head from content: %s.', content.head())
 logger.info('Importing document type group lookup from %s.',
             DOCUMENT_TYPE_PATH)
 
-DOCUMENT_TYPE_PATH_URI = pathlib.Path(DOCUMENT_TYPE_PATH).as_uri()
-
-with open(DOCUMENT_TYPE_PATH_URI, 'r') as fp:
+with open(DOCUMENT_TYPE_PATH, 'r') as fp:
     lookup_dict = json.load(fp)
 
 docgp_lookup = pd.DataFrame.from_dict(lookup_dict, orient='index')
@@ -106,7 +104,7 @@ content = pd.merge(
     indicator=True
 )
 
-content.loc[df['_merge'] == 'left_only', 'document_type_gp'] = 'other'
+content.loc[content['_merge'] == 'left_only', 'document_type_gp'] = 'other'
 content.drop('_merge', axis=1, inplace=True)
 # Text body is stored in dictionary in details column of content df
 
@@ -221,10 +219,10 @@ logger.debug('content_long.head(): %s', content_long.head())
 
 # Assert content long has 14 columns
 
-logger.info('Assert that column_long has the expected 14 columns.')
+logger.info('Assert that column_long has the expected 15 columns.')
 
 try:
-    assert content_long.shape[1] == 14
+    assert content_long.shape[1] == 15
 except AssertionError:
     logger.exception('Incorrect number of columns in content_long (labelled content)')
     raise 
