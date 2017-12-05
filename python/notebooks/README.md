@@ -27,18 +27,30 @@ You should now be able to see your kernel in the IPython notebook menu: Kernel -
 
 ## Getting the data
 
+![alt text](data_map.png)
 See README at root of repo
+
 
 ## Notebooks
 |Name|Activity|Data inputs|Data outputs|
 |---|------|---|---|
-|EDA-prepare-and-count-data|Some dataprep which will move to cleaning scripts and counting of data for baseline EDA|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz|labelled.csv, filtered.csv, taxons_cleaner.csv, old_tags.csv, empty_taxons.csv|
+|EDA-count-data|Read in and count data files|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz, labelled.csv, filtered.csv, empty_taxons.csv, old_tags.csv|None|
 |EDA-taxons|Descriptive analysis of taxon content overall, and according to level|labelled, filtered, taxons|level2taxons_concordant.csv, taggedtomorethan10taxons.csv|
-|EDA-document-type|Descriptive analysis of content according to document type, over time|untagged, labelled, filtered|None|
+|EDA-document-type|Descriptive analysis of content according to document type, over time|untagged, labelled, filtered, labelled_level1, labelled_level2|document_type_group_lookup.json|
+|EDA-other-metadata|Descriptive analysis of content according to metadata types, over time|untagged, labelled, filtered, labelled_level1, labelled_level2|none|
+
+## Machine learning notebooks (ML_notebooks)
+|Name|Activity|Data inputs|
+|---|------|---|
+|CNN-allgovuk.ipynb|Convolutional Neural Network of tagged content using keras framework and pre-trained word embeddings|clean_content.csv.gz, clean_taxons.csv|
+|SVM_allgovuk.ipynb|Support vector machine of tagged content||
+|TPOT_allgovuk.ipynb|Genetic algorithm to select optimal algorithm and hyperparameters||
+
+
+## Archived notebooks
+|Name|Activity|Data inputs|Data outputs|
+|---|------|---|---|
 |EDA|Exploratory data analysis|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz|None|
-|CNN-allgovuk.ipynb|Convolutional Neural Network of tagged content using keras framework and pre-trained word embeddings|clean_content.csv.gz, clean_taxons.csv||
-|SVM_allgovuk.ipynb|Support vector machine of tagged content|||
-|TPOT_allgovuk.ipynb|Genetic algorithm to select optimal algorithm and hyperparameters|||
 |clean_content.ipynb|Development of steps to process raw content data into formats for use in EDA and modelling. These are now used in clean_content.py, which is called by the Makefile|||
 |explore_content_dupes.ipynb|Understand duplicates in gov.uk content items|raw_content.json, clean_content.csv|None|
 
