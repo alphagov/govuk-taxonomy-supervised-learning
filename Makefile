@@ -1,6 +1,8 @@
 # Makefile 
 # Run `make` to clean taxons and content.
 # Run `make init` to install required packages with pip.
+# Run `make test` to run tests on pipeline_functions.
+# Run `make clean` to remove all raw and intermediate data files.
 
 all : taxons content labelled
 taxons : $(DATADIR)/clean_taxons.csv
@@ -26,11 +28,16 @@ $(DATADIR)/raw_taxons.json :
 $(DATADIR)/raw_content.json.gz :
 	aws s3 cp $(S3BUCKET)/raw_content.json.gz $(DATADIR)/raw_content.json.gz
 
+clean : 
+	-rm data/clean_taxons.csv /data/clean_content.csv.gz data/untagged_content.csv \
+	data/empty_taxons.csv data/labelled.csv data/filtered.csv data/old_taxons.csv \
+	data/labelled_level1.csv data/labelled_level2.csv data/empty_taxons_not_world.csv
+
 init : 
 	pip3 install -r python/requirements.txt
 
 test : 
 	cd python && python3 -m pytest
 
-.PHONY : init test
+.PHONY : init test clean
 
