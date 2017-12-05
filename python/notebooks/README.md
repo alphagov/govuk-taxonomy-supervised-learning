@@ -34,7 +34,7 @@ See README at root of repo
 ## Notebooks
 |Name|Activity|Data inputs|Data outputs|
 |---|------|---|---|
-|EDA-prepare-and-count-data|Some dataprep which will move to cleaning scripts and counting of data for baseline EDA|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz|labelled.csv, filtered.csv, taxons_cleaner.csv, old_tags.csv, empty_taxons.csv|
+|EDA-count-data|Read in and count data files|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz, labelled.csv, filtered.csv, empty_taxons.csv, old_tags.csv|None|
 |EDA-taxons|Descriptive analysis of taxon content overall, and according to level|labelled, filtered, taxons|level2taxons_concordant.csv, taggedtomorethan10taxons.csv|
 |EDA-document-type|Descriptive analysis of content according to document type, over time|untagged, labelled, filtered|None|
 |EDA|Exploratory data analysis|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz|None|
