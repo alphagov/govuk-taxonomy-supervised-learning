@@ -110,15 +110,17 @@ logger.debug('Printing top 10 from content.body: %s.', content.body[0:10])
 
 # Clean the html
 
-logger.info('Extracting text from body')
+logger.info('Extracting title, description, and text from content.')
+
+logger.debug('Extracting text from body')
 content = content.assign(body = content['body'].apply(extract_text))
 logger.debug('Text extracted from body looks like: %s', content['body'][0:10])
 
-logger.info('Extracting text from description')
+logger.debug('Extracting text from description')
 content = content.assign(description = content['description'].apply(extract_text))
 logger.debug('Text extracted from description looks like: %s', content['description'][0:10])
 
-logger.info('Extracting text from title')
+logger.debug('Extracting text from title')
 content = content.assign(title = content['title'].apply(extract_text))
 logger.debug('Text extracted from title looks like: %s', content['title'][0:10])
 
