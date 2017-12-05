@@ -82,8 +82,8 @@ labelled = pd.merge(
 logger.info('labelled.shape: %s.', labelled.shape)
 logger.debug('labelled.head(): %s.', labelled.head())
 
-logger.debug('labelled.columns: %s', labelled.columns)
-logger.debug('Checking output of the merge: %s', labelled['_merge'].value_counts())
+logger.info('labelled.columns: %s', labelled.columns)
+logger.info('Checking output of the merge: %s', labelled['_merge'].value_counts())
 logger.info('There are %s tagged content items/taxon combinations '
             'with a matching taxon', labelled['_merge'].value_counts()[2])
 logger.info('There are %s tagged content items/taxon combinations '
@@ -174,7 +174,7 @@ logger.info("There are %s taxons with nothing tagged to them", filtered['_merge'
 
 empty_taxons_not_world = filtered[filtered._merge == 'right_only']
 
-logger.debug('empty_taxons_not_world.columns: %s', empty_taxons_not_world.columns)
+logger.info('empty_taxons_not_world.columns: %s', empty_taxons_not_world.columns)
 
 # TODO investigate why the level5taxon column has been lost here.
 
@@ -209,14 +209,14 @@ logger.info("There are %s content items/taxon combinations with missing taxon "
 
 logger.info("Tidying the filtered dataframe")
 logger.info("filtered.shape: %s", filtered.shape)
-logger.debug("filtered.columns: %s", filtered.columns)
+logger.info("filtered.columns: %s", filtered.columns)
 
 filtered = filtered.drop(['Unnamed: 0', 'variable', 'base_path_y', 'content_id_y'], axis=1)
 
-filtered.rename(columns={'base_path_x': 'base_path',
+filtered.rename(columns={'base_path_x': 'base_path', 
                          'content_id_x': 'content_id'}, inplace=True)
 
-logger.debug("filtered.columns after tidying: %s", filtered.columns)
+logger.info("filtered.columns after tidying: %s", filtered.columns)
 
 # Count duplicates
 
