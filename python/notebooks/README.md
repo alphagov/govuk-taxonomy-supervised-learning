@@ -44,6 +44,8 @@ See README at root of repo
 
 
 ## Archived notebooks
+|Name|Activity|Data inputs|Data outputs|
+|---|------|---|---|
 |EDA|Exploratory data analysis|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz|None|
 |clean_content.ipynb|Development of steps to process raw content data into formats for use in EDA and modelling. These are now used in clean_content.py, which is called by the Makefile|||
 |explore_content_dupes.ipynb|Understand duplicates in gov.uk content items|raw_content.json, clean_content.csv|None|
