@@ -29,9 +29,13 @@ $(DATADIR)/raw_content.json.gz :
 	aws s3 cp $(S3BUCKET)/raw_content.json.gz $(DATADIR)/raw_content.json.gz
 
 clean : 
-	-rm data/clean_taxons.csv /data/clean_content.csv.gz data/untagged_content.csv \
-	data/empty_taxons.csv data/labelled.csv data/filtered.csv data/old_taxons.csv \
-	data/labelled_level1.csv data/labelled_level2.csv data/empty_taxons_not_world.csv
+	-rm -f $(DATADIR)/clean_taxons.csv $(DATADIR)/clean_content.csv.gz \
+	    $(DATADIR)/untagged_content.csv $(DATADIR)/empty_taxons.csv \
+	    $(DATADIR)/labelled.csv $(DATADIR)/filtered.csv $(DATADIR)/old_taxons.csv \
+	    $(DATADIR)/labelled_level1.csv $(DATADIR)/labelled_level2.csv \
+	    $(DATADIR)/empty_taxons_not_world.csv $(DATADIR)/document_type_group_lookup.json \
+	    $(DATADIR)/raw_taxons.json $(DATADIR)/raw_content.json.gz
+
 
 init : 
 	pip3 install -r python/requirements.txt
@@ -40,4 +44,3 @@ test :
 	cd python && python3 -m pytest
 
 .PHONY : init test clean
-
