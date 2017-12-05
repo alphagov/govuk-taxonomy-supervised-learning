@@ -41,6 +41,10 @@ See README at root of repo
 |CNN-allgovuk.ipynb|Convolutional Neural Network of tagged content using keras framework and pre-trained word embeddings|clean_content.csv.gz, clean_taxons.csv||
 |SVM_allgovuk.ipynb|Support vector machine of tagged content|||
 |TPOT_allgovuk.ipynb|Genetic algorithm to select optimal algorithm and hyperparameters|||
+
+
+## Archived notebooks
+|EDA|Exploratory data analysis|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz|None|
 |clean_content.ipynb|Development of steps to process raw content data into formats for use in EDA and modelling. These are now used in clean_content.py, which is called by the Makefile|||
 |explore_content_dupes.ipynb|Understand duplicates in gov.uk content items|raw_content.json, clean_content.csv|None|
 
