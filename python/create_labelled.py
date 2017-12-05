@@ -147,7 +147,7 @@ logger.info("filtered_taxons.shape after filtering 'Corporate information' top t
 
 # Merge filtered taxons with content to create filtered
 
-logger.info("Merging clean_content and filtered_taxons to create filtered')
+logger.info("Merging clean_content and filtered_taxons to create filtered")
 
 filtered = pd.merge(
     left=clean_content,
@@ -273,10 +273,10 @@ level2_dedup = labelled.drop_duplicates(subset = ['content_id', 'level1taxon', '
 
 level2_dedup['first_published_at'] = level2_dedup['first_published_at'].str.replace('0001-01-01', '2001-01-01')
 
-logging.info('There were %s content item/taxons before removing duplicates',
+logger.info('There were %s content item/taxons before removing duplicates',
              labelled.shape[0])
 
-logging.info('There were %s content items, unique level2 taxon pairs after '
+logger.info('There were %s content items, unique level2 taxon pairs after '
              'removing duplicates by content_id, level1taxon and level2taxon',
              level2_dedup.shape[0])
 
@@ -285,12 +285,12 @@ logging.info('There were %s content items, unique level2 taxon pairs after '
 mask = pd.notnull(level2_dedup['level2taxon'])
 level1_tagged = level2_dedup[~mask].copy()
 
-logging.info('There were %s content items only tagged to level1',
+logger.info('There were %s content items only tagged to level1',
              level1_tagged.shape[0])
 
 level2_tagged = level2_dedup[mask].copy()
 
-logging.info('There are %s content items tagged to level2 or lower',
+logger.info('There are %s content items tagged to level2 or lower',
              level2_tagged.shape[0])
 
 try:
