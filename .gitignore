@@ -6,3 +6,5 @@ checkpoints
 *tf_logs
 data
 .DS_Store
+__pycache__
+*/.cache
