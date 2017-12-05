@@ -93,7 +93,8 @@ logger.info('There are %s taxons with nothing tagged to them', labelled['_merge'
 # Rename columns after merge (some will have _x or _y appended if
 # they are duplicated across merging dataframes).
 
-# TODO: labelled Sort out index names and columns names with suffix y, drop _merge #drop some cols
+# TODO: labelled Sort out index names and columns names with suffix y, drop _merge 
+# drop some cols
 # content_taxons = content_taxons.drop(['Unnamed: 0', 'variable', 'base_path_y', 
 #                                       'content_id_y'], axis=1)
 
@@ -260,7 +261,7 @@ pre_dedup_rows = filtered.shape[0]
 pre_dedup_unique = filtered.content_id.nunique()
 
 filtered = filtered.drop_duplicates(
-        subset=['content_id', 'taxon_id']
+    subset=['content_id', 'taxon_id']
     )
 
 logger.info("There were %s additional rows dropped due to duplicate "
@@ -283,11 +284,11 @@ level2_dedup = labelled.drop_duplicates(subset = ['content_id', 'level1taxon', '
 level2_dedup['first_published_at'] = level2_dedup['first_published_at'].str.replace('0001-01-01', '2001-01-01')
 
 logger.info('There were %s content item/taxons before removing duplicates',
-             labelled.shape[0])
+            labelled.shape[0])
 
 logger.info('There were %s content items, unique level2 taxon pairs after '
-             'removing duplicates by content_id, level1taxon and level2taxon',
-             level2_dedup.shape[0])
+            'removing duplicates by content_id, level1taxon and level2taxon',
+            level2_dedup.shape[0])
 
 # Identify and drop rows where level2 is missing
 
@@ -295,12 +296,12 @@ mask = pd.notnull(level2_dedup['level2taxon'])
 level1_tagged = level2_dedup[~mask].copy()
 
 logger.info('There were %s content items only tagged to level1',
-             level1_tagged.shape[0])
+            level1_tagged.shape[0])
 
 level2_tagged = level2_dedup[mask].copy()
 
 logger.info('There are %s content items tagged to level2 or lower',
-             level2_tagged.shape[0])
+            level2_tagged.shape[0])
 
 try:
     assert level1_tagged.shape[0] + level2_tagged.shape[0] == level2_dedup.shape[0]
