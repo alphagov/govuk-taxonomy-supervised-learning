@@ -50,21 +50,21 @@ Some files are stored compressed like `raw_content.json.gz`. Do not decompress t
 
 There is a Makefile which can be run to execute the cleaning scripts. After downloading the data to an appropriate dir, and pointing at it with the env vars, you can install python dependencies by running `make init`.
 
-Once complete, running `make` will launch the cleaning scripts, creating two files:
+Once complete, running `make` will launch the cleaning scripts, creating a number of files:
 
-|Filename|produced by|
+|Filename (data/)|produced by (python/)|
 |---|---|
-|data/clean_taxons.csv|python/clean_taxons.py|
-|data/clean_content.csv|python/clean_content.py|
-|data/untagged_content.csv|python/clean_content.py|
-|data/empty_taxons.csv|python/create_labelled.py|
-|data/labelled.csv|python/create_labelled.py|
-|data/filtered.csv|python/create_labelled.py|
-|data/old_taxons.csv|python/create_labelled.py|
-|data/empty_taxons.csv|python/create_labelled.py|
-|data/labelled_level1.csv|create_labelled.py|
-|data/labelled_level2.csv|create_labelled.py|
-|data/empty_taxons_not_world.csv|create_labelled.py|
+|clean_taxons.csv|clean_taxons.py|
+|clean_content.csv|clean_content.py|
+|untagged_content.csv|clean_content.py|
+|empty_taxons.csv|create_labelled.py|
+|labelled.csv|create_labelled.py|
+|filtered.csv|create_labelled.py|
+|old_taxons.csv|create_labelled.py|
+|empty_taxons.csv|create_labelled.py|
+|labelled_level1.csv|create_labelled.py|
+|labelled_level2.csv|create_labelled.py|
+|empty_taxons_not_world.csv|create_labelled.py|
     
 The following schematic describes the movement of data through the pipeline, and the role of each of the scripts.
 
