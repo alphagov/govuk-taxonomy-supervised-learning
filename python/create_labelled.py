@@ -26,13 +26,11 @@ UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, 'untagged_content.csv')
 EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv')
 LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv')
 FILTERED_OUTPUT_PATH = os.path.join(DATADIR, 'filtered.csv')
-OLD_TAGS_OUTPUT_PATH = os.path.join(DATADIR, 'old_tags.csv')
-EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_tags.csv') #what's different about this and empyty taxons?
+OLD_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'old_taxons.csv')
+EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv')
 LABELLED_LEVEL1_OUTPUT_PATH = os.path.join(DATADIR, 'labelled_level1.csv')
 LABELLED_LEVEL2_OUTPUT_PATH = os.path.join(DATADIR, 'labelled_level2.csv')
-
-
-EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH = os.path.join(DATADIR, 'empty_tags_not_world.csv')
+EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons_not_world.csv')
 
 # Import clean_content (output by clean_content.py)
 
@@ -149,7 +147,7 @@ logger.info("filtered_taxons.shape after filtering 'Corporate information' top t
 
 # Merge filtered taxons with content to create filtered
 
-logger.info("Merging clean_content and filtered_taxons to create filtered")
+logger.info("Merging clean_content and filtered_taxons to create filtered')
 
 filtered = pd.merge(
     left=clean_content,
@@ -314,7 +312,7 @@ write_csv(labelled, 'labelled', LABELLED_OUTPUT_PATH, logger)
 write_csv(filtered, 'filtered', FILTERED_OUTPUT_PATH, logger)
 
 write_csv(content_old_taxons, 'old_taxons',
-          OLD_TAGS_OUTPUT_PATH, logger)
+          OLD_TAXONS_OUTPUT_PATH, logger)
 
 # NOTE: I have saved this dataframe out here. In previous versions
 # it was getting overwritten by the empty taxons csv.
