@@ -27,6 +27,7 @@ You should now be able to see your kernel in the IPython notebook menu: Kernel -
 
 ## Getting the data
 
+![alt text](../data/data_map.png)
 See README at root of repo
 
 ## Notebooks
