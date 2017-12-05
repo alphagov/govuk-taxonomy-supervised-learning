@@ -2,28 +2,39 @@
 """
 # coding: utf-8
 
-import pytest
+import logging
+import os
 import pandas as pd
+import pipeline_functions
 
-class TestCleanTaxons(object):
+class TestPipelineFunctions(object):
+
 
     def setup_method(self):
         """
         Setup test conditions for subsequent method calls.
         For more info, see: https://docs.pytest.org/en/2.7.3/xunit_setup.html
         """
+        self.logger = logging.getLogger('test_pipeline_functions')
+        self.TEST_PATH = '/tmp/test_data.csv'
 
-        # Load in test data as pandas dataframe
-        # Test urls are duplicated twice.
 
-        # Note that self.urls is a dataframe so we must specify the appropriate
-        # column: `url`
+    def teardown_method(self):
 
-    def test_govukurls_deduplication(self):
+        os.remove(self.TEST_PATH)
+
+
+    def test_write_csv(self):
         """
-        Test that duplicate urls are successfully removed by the init method.
+        Test for the write_csv function
         """
 
-        assert len(self.urlsclass.dedupurls) < len(self.urls)
-        assert len(self.urlsclass.dedupurls) == len(self.urls) / 2
+        # Create a test file
 
+        test_data = ['test'] * 100
+        test_data = pd.DataFrame(test_data)
+
+        pipeline_functions.write_csv(test_data, 
+                'test data', self.TEST_PATH, self.logger)
+
+        assert os.path.exists(self.TEST_PATH)

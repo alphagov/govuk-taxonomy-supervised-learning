@@ -1,10 +1,38 @@
 '''
 Helper functions used in the clean_content.py and clean_taxons.py scripts.
 '''
+import os.path
+import functools
 import pandas as pd
 import numpy as np
-import functools
 from lxml import etree
+
+def write_csv(dataframe, name, path, logger):
+    '''
+    Write a dataframe to CSV with logging
+
+    :param dataframe: <str> A pandas dataframe to be written out.
+    Note that this is passed as a sring and then evaluated as an
+    object to complete the logging message
+    :param name: <str> Name of the object being written out.
+    This is a description that is is written to the logging message
+    :param path: <str> The path to be written to
+    :param logger: <logging.getLogger> Current logger
+    '''
+
+    if os.path.exists(path):
+        logger.warning('Overwriting %s', path)
+
+    logger.info('Writing %s to %s', name, path)
+
+    try:
+
+        dataframe.to_csv(path)
+
+    except Exception:
+        logger.exception('Error writing %s to %s', name, path)
+        raise
+
 
 # TODO: Remove recursive function reference!
 def ancestors(parent_content_id, child_dict):
