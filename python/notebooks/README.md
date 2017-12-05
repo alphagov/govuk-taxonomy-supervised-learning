@@ -27,8 +27,9 @@ You should now be able to see your kernel in the IPython notebook menu: Kernel -
 
 ## Getting the data
 
-![alt text](../data/data_map.png)
+![alt text](govuk-taxonomy-supervised-learning/python/notebooks/data_map.png)
 See README at root of repo
+
 
 ## Notebooks
 |Name|Activity|Data inputs|Data outputs|
