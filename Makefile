@@ -6,7 +6,7 @@
 
 all : taxons content labelled
 taxons : $(DATADIR)/clean_taxons.csv
-content : $(DATADIR)/clean_content.csv
+content : $(DATADIR)/clean_content.csv.gz
 labelled : $(DATADIR)/create_labelled.csv
 
 $(DATADIR)/create_labelled.csv : python/create_labelled.py $(DATADIR)/raw_taxons.json taxons content
@@ -15,7 +15,7 @@ $(DATADIR)/create_labelled.csv : python/create_labelled.py $(DATADIR)/raw_taxons
 $(DATADIR)/clean_taxons.csv : python/clean_taxons.py $(DATADIR)/raw_taxons.json
 	python3 python/clean_taxons.py
 
-$(DATADIR)/clean_content.csv : python/clean_content.py $(DATADIR)/raw_content.json.gz \
+$(DATADIR)/clean_content.csv.gz : python/clean_content.py $(DATADIR)/raw_content.json.gz \
 $(DATADIR)/document_type_group_lookup.json
 	python3 python/clean_content.py
 
