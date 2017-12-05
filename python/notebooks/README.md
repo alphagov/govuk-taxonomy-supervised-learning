@@ -38,9 +38,13 @@ See README at root of repo
 |EDA-taxons|Descriptive analysis of taxon content overall, and according to level|labelled, filtered, taxons|level2taxons_concordant.csv, taggedtomorethan10taxons.csv|
 |EDA-document-type|Descriptive analysis of content according to document type, over time|untagged, labelled, filtered, labelled_level1, labelled_level2|document_type_group_lookup.json|
 |EDA-other-metadata|Descriptive analysis of content according to metadata types, over time|untagged, labelled, filtered, labelled_level1, labelled_level2|none|
-|CNN-allgovuk.ipynb|Convolutional Neural Network of tagged content using keras framework and pre-trained word embeddings|clean_content.csv.gz, clean_taxons.csv||
-|SVM_allgovuk.ipynb|Support vector machine of tagged content|||
-|TPOT_allgovuk.ipynb|Genetic algorithm to select optimal algorithm and hyperparameters|||
+
+## Machine learning notebooks (ML_notebooks)
+|Name|Activity|Data inputs|
+|---|------|---|
+|CNN-allgovuk.ipynb|Convolutional Neural Network of tagged content using keras framework and pre-trained word embeddings|clean_content.csv.gz, clean_taxons.csv|
+|SVM_allgovuk.ipynb|Support vector machine of tagged content||
+|TPOT_allgovuk.ipynb|Genetic algorithm to select optimal algorithm and hyperparameters||
 
 
 ## Archived notebooks
