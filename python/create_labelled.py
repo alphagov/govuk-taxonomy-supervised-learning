@@ -23,7 +23,7 @@ TAXONS_INPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv')
 # Set file output paths
 
 UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, 'untagged_content.csv')
-EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv')
+EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv')#this is the same as not_world. Delete/rename
 LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv')
 FILTERED_OUTPUT_PATH = os.path.join(DATADIR, 'filtered.csv')
 OLD_TAGS_OUTPUT_PATH = os.path.join(DATADIR, 'old_tags.csv')
@@ -95,6 +95,10 @@ logger.info('There are %s taxons with nothing tagged to them', labelled['_merge'
 
 # Rename columns after merge (some will have _x or _y appended if
 # they are duplicated across merging dataframes).
+
+# TODO: labelled Sort out index names and columns names with suffix y, drop _merge #drop some cols
+# content_taxons = content_taxons.drop(['Unnamed: 0', 'variable', 'base_path_y', 
+#                                       'content_id_y'], axis=1)
 
 labelled.rename(
     columns={'base_path_x': 'base_path', 'content_id_x': 'content_id'},
@@ -169,6 +173,8 @@ logger.info("There are %s tagged content items/taxon combinations "
             "without a matching taxon", filtered['_merge'].value_counts()[0])
 logger.info("There are %s taxons with nothing tagged to them", filtered['_merge'].value_counts()[1])
 
+# TODO: index name for filtered is Unnamed:0, change this
+
 empty_taxons_not_world = filtered[filtered._merge == 'right_only']
 
 logger.info('empty_taxons_not_world.columns: %s', empty_taxons_not_world.columns)
@@ -197,6 +203,10 @@ logger.info("There are %s taxons represented in the %s content item/taxon "
 logger.info("There are %s content items/taxon combinations with missing taxon "
             "because these were removed during taxon_clean.py",
             content_old_taxons[content_old_taxons.taxon_id.isnull()].shape[0])
+
+# TODO: Add this to untagged data with a flag
+
+# TODO: index and column names with _x suffices
 
 # Tidy the filtered dataframe
 
