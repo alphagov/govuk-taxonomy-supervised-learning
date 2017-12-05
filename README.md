@@ -61,24 +61,16 @@ Once complete, running `make` will launch the cleaning scripts, creating two fil
 |data/labelled.csv|python/create_labelled.py|
 |data/filtered.csv|python/create_labelled.py|
 |data/old_taxons.csv|python/create_labelled.py|
-|data/empty_taxons.csv||
-|data/labelled_level1.csv||
-|data/labelled_level2.csv||
-|data/empty_taxons_not_world.csv||
+|data/empty_taxons.csv|python/create_labelled.py|
+|data/labelled_level1.csv|create_labelled.py|
+|data/labelled_level2.csv|create_labelled.py|
+|data/empty_taxons_not_world.csv|create_labelled.py|
     
-The followi
+The following schematic describes the movement of data through the pipeline, and the role of each of the scripts.
 
 ![alt text](data_map.png)
 
-
-These cleaned files are used by the python notebooks contained in `python/notebooks`.
-
-## Logging
-
-The default logging configuration (set in `./python/`) will do the following things:
-
-* Write a simple log to stdout (console) at `INFO` level
-* Write a more detailed log to a file at `DEBUG` level (by default `/tmp/govuk-taxonomy-supervised-learning.log`).
+The cleaned files are used by the python notebooks contained in `python/notebooks`.
 
 ## Jupyter notebooks
 
@@ -103,7 +95,7 @@ You should now be able to see your kernel in the IPython notebook menu: Kernel -
 
 ### Notebooks
 |Name|Activity|Data inputs|Data outputs|
-|---|------|---|---|
+|---|---|---|---|
 |EDA-count-data|Read in and count data files|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz, labelled.csv, filtered.csv, empty_taxons.csv, old_tags.csv|None|
 |EDA-taxons|Descriptive analysis of taxon content overall, and according to level|labelled, filtered, taxons|level2taxons_concordant.csv, taggedtomorethan10taxons.csv|
 |EDA-document-type|Descriptive analysis of content according to document type, over time|untagged, labelled, filtered, labelled_level1, labelled_level2|document_type_group_lookup.json|
@@ -111,17 +103,22 @@ You should now be able to see your kernel in the IPython notebook menu: Kernel -
 
 ## Machine learning notebooks (ML_notebooks)
 |Name|Activity|Data inputs|
-|---|------|---|
+|---|---|---|
 |CNN-allgovuk.ipynb|Convolutional Neural Network of tagged content using keras framework and pre-trained word embeddings|clean_content.csv.gz, clean_taxons.csv|
 |SVM_allgovuk.ipynb|Support vector machine of tagged content||
 |TPOT_allgovuk.ipynb|Genetic algorithm to select optimal algorithm and hyperparameters||
 
-
 ## Archived notebooks
 |Name|Activity|Data inputs|Data outputs|
-|---|------|---|---|
+|---|---|---|---|
 |EDA|Exploratory data analysis|untagged_content.csv, clean_taxons.csv, clean_content.csv.gz|None|
 |clean_content.ipynb|Development of steps to process raw content data into formats for use in EDA and modelling. These are now used in clean_content.py, which is called by the Makefile|||
 |explore_content_dupes.ipynb|Understand duplicates in gov.uk content items|raw_content.json, clean_content.csv|None|
 
+## Logging
+
+The default logging configuration (set in `./python/`) will do the following things:
+
+* Write a simple log to stdout (console) at `INFO` level
+* Write a more detailed log to a file at `DEBUG` level (by default `/tmp/govuk-taxonomy-supervised-learning.log`).
 
