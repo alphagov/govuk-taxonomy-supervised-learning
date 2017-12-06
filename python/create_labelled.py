@@ -206,7 +206,7 @@ logger.info("Tidying the filtered dataframe")
 logger.info("filtered.shape: %s", filtered.shape)
 logger.debug("filtered.columns: %s", filtered.columns)
 
-filtered = filtered.drop(['Unnamed: 0', 'variable', 'base_path_y', 'content_id_y'], axis=1)
+filtered = filtered.drop(['variable', 'base_path_y', 'content_id_y'], axis=1)
 
 filtered.rename(columns={'base_path_x': 'base_path',
                          'content_id_x': 'content_id'}, inplace=True)
