@@ -23,7 +23,6 @@ TAXONS_INPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv')
 # Set file output paths
 
 UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, 'untagged_content.csv')
-EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv')#this is the same as not_world. Delete/rename
 LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv')
 FILTERED_OUTPUT_PATH = os.path.join(DATADIR, 'filtered.csv')
 OLD_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'old_taxons.csv')
@@ -111,7 +110,7 @@ logger.info('Extracting empty taxons (right_only) after merge')
 empty_taxons = labelled[labelled._merge == 'right_only']
 
 logger.info('empty_taxons.shape: %s', empty_taxons.shape)
-logger.info('Writing empty_taxons to %s', EMPTY_TAXONS_OUTPUT_PATH)
+
 
 # Drop all data from labelled that did not join cleanly
 
@@ -180,7 +179,7 @@ logger.debug('empty_taxons_not_world.columns: %s', empty_taxons_not_world.column
 
 empty_taxons_not_world = empty_taxons_not_world[
     ['base_path_y', 'content_id_y', 'taxon_name', 'level1taxon',
-     'level2taxon', 'level3taxon', 'level4taxon']]
+     'level2taxon', 'level3taxon', 'level4taxon', 'level5taxon']]
 
 # Extract the data with no taxons (left_only) from above merge
 
@@ -203,7 +202,6 @@ logger.info("There are %s content items/taxon combinations with missing taxon "
 
 # TODO: Add this to untagged data with a flag
 
-# TODO: index and column names with _x suffices
 
 # Tidy the filtered dataframe
 
@@ -331,5 +329,6 @@ write_csv(content_old_taxons, 'old_taxons',
 write_csv(empty_taxons_not_world, 'empty_taxons_not_world',
           EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH, logger)
 
+logger.info('Writing empty_taxons to %s', EMPTY_TAXONS_OUTPUT_PATH)
 write_csv(empty_taxons, 'empty_taxons',
           EMPTY_TAXONS_OUTPUT_PATH, logger)
