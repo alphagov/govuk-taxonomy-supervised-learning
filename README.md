@@ -27,10 +27,29 @@ The following data files are used in this project.
 |raw_content.json.gz|s3://buod-govuk-taxonomy-supervised-learning/raw_content.json|Content of GOV.UK (zipped to save space)|224MB|
 |document_type_group_lookup.json|s3://buod-govuk-taxonomy-supervised-learning/document_type_group_lookup.json|Lookup table for document type groups|2KB|
 
+You will need access to the `s3://govuk-taxonomy-supervised-learning` S3 bucket to access these files, which requires programmatic access to Amazon Web Services (AWS). Once a key has been created for you, you will need to install the AWS command line interface (CLI), which can be done with:
+
+`brew install aws`
+
+Then configure an AWS CLI profile with:
+
+`aws configure --profile gds-data`
+
+When asked to set a default region set `eu-west-2` (London), and default format `json`.
+
+### Other
+
+* Terraform
+* An [SSH key added to the SSH agent](https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/).
+
+## Create the AWS infrastructure
+
+### Using the databox.sh wrapper
+
 
 If these files do not exist in DATADIR, they will be created by Makefile by running `make`.
 
-The files `raw_content.json` and `raw_taxons.json` can be downloaded from the S3 bucket where they are stored using the `aws s3 cp` command. This command works exactly like the bash `cp`, e.g.: to copy a file from the s3 bucket to your local machine:
+The files `raw_content.json`, `raw_taxons.json`, and `document_type_group_lookup.json` can be downloaded from the S3 bucket where they are stored using the `aws s3 cp` command. This command works exactly like the bash `cp`, e.g.: to copy a file from the s3 bucket to your local machine:
 
 ```
 aws s3 cp s3://buod-govuk-taxonomy-supervised-learning/<file> <local file>
