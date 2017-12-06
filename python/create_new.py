@@ -36,6 +36,7 @@ untagged = pd.read_csv(
 logger.info('untagged.shape: %s.', untagged.shape)
 logger.debug('untagged.head(): %s.', untagged.head())
 
+
 # Import old_taxons, content which has been tagged to taxons not represented in the V1 topic taxonomy
 
 logger.info('Importing from %s as old_taxons', OLD_TAXONS_INPUT_PATH)
@@ -57,8 +58,33 @@ logger.info("There are %s old_taxons rows", old_taxons.shape[0])
 logger.info("There are %s old_taxons content items", 
             old_taxons.content_id.nunique())
 
+# Drop duplicate content id
 
+logger.info('dropping untagged duplicates by content_id')
 
+untagged = untagged.drop_duplicates(subset=['content_id'])
+
+logger.info('dropping old_taxons duplicates by content_id')
+
+old_taxons = old_taxons.drop_duplicates(subset=['content_id'])
+
+# Create flag for untagged-type , old_taxons
+untagged['untagged_type'] = 'untagged'
+old_taxons['untagged_type'] = 'old_taxons'
+
+# Concatenate dfs untagged & old_taxons
+
+logger.info('joining untagged to old_taxons')
+
+new = pd.concat([untagged, old_taxons], ignore_index=True)
+
+logger.info('There were %s items in both the untagged and old-taxons data', 
+            new.content_id.duplicated().sum())
+logger.info(new.columns)
+
+logger.info('dropping new duplicates by content_id')
+
+new = new.drop_duplicates(subset=['content_id'])
 # Write out dataframes
 
 write_csv(new, 'new content',
