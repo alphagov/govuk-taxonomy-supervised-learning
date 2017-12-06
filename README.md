@@ -65,6 +65,7 @@ Once complete, running `make` will launch the cleaning scripts, creating a numbe
 |labelled_level1.csv|create_labelled.py|
 |labelled_level2.csv|create_labelled.py|
 |empty_taxons_not_world.csv|create_labelled.py|
+|new_content.csv|create_new.py|
     
 The following schematic describes the movement of data through the pipeline, and the role of each of the scripts.
 
