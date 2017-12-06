@@ -22,7 +22,6 @@ TAXONS_INPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv')
 
 # Set file output paths
 
-UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, 'untagged_content.csv')
 LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv')
 FILTERED_OUTPUT_PATH = os.path.join(DATADIR, 'filtered.csv')
 OLD_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'old_taxons.csv')
@@ -130,10 +129,6 @@ logger.info('labelled.shape after dropping duplicates: %s', labelled.shape)
 logger.info('Unique content_ids after dropping duplicates: %s', labelled.content_id.nunique())
 
 
-labelled = labelled.drop(['content_id_y','_merge', 'variable'], axis=1)
-
-logger.info('%s', labelled.columns)
-
 # Filter by taxon to exclude specific taxons from predictions
 
 logger.info('Filtering by taxon to produced filtered_taxons')
@@ -182,14 +177,14 @@ empty_taxons_not_world = empty_taxons_not_world[
 
 # Extract the data with no taxons (left_only) from above merge
 
-# TODO: Check whether this should be filtered of labelled
+# Content tagged to old taxons, not in taxons_clean topic taxonomy
 
-content_old_taxons = filtered[
-    ['base_path_x', 'content_id_x', 'document_type',
+content_old_taxons = labelled[
+    ['base_path', 'content_id', 'document_type',
      'first_published_at', 'locale', 'primary_publishing_organisation',
      'publishing_app', 'title', 'taxon_id']]
 
-content_old_taxons = content_old_taxons[filtered._merge == 'left_only']
+content_old_taxons = content_old_taxons[labelled._merge == 'left_only']
 
 logger.info("There are %s taxons represented in the %s content item/taxon "
             "combinations which have no corresponding taxon in the taxon data",
@@ -198,6 +193,8 @@ logger.info("There are %s taxons represented in the %s content item/taxon "
 logger.info("There are %s content items/taxon combinations with missing taxon "
             "because these were removed during taxon_clean.py",
             content_old_taxons[content_old_taxons.taxon_id.isnull()].shape[0])
+
+labelled = labelled.drop(['content_id_y','_merge', 'variable'], axis=1)
 
 # TODO: Add this to untagged data with a flag
 
