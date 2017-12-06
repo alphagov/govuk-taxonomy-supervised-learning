@@ -93,13 +93,9 @@ logger.info('There are %s taxons with nothing tagged to them', labelled['_merge'
 # Rename columns after merge (some will have _x or _y appended if
 # they are duplicated across merging dataframes).
 
-# TODO: labelled Sort out index names and columns names with suffix y, drop _merge 
-# drop some cols
-# content_taxons = content_taxons.drop(['Unnamed: 0', 'variable', 'base_path_y', 
-#                                       'content_id_y'], axis=1)
-
 labelled.rename(
-    columns={'base_path_x': 'base_path', 'content_id_x': 'content_id'},
+    columns={'base_path_x': 'base_path', 'content_id_x': 'content_id' 
+    , 'base_path_y': 'taxon_base_path'},
     inplace=True
 )
 
@@ -133,6 +129,9 @@ labelled = labelled.drop_duplicates(subset=['content_id','taxon_id'])
 
 logger.info('labelled.shape after dropping duplicates: %s', labelled.shape)
 logger.info('Unique content_ids after dropping duplicates: %s', labelled.content_id.nunique())
+
+
+labelled = labelled.drop(['content_id_y','_merge', 'variable'], axis=1)
 
 logger.info('%s', labelled.columns)
 
@@ -273,6 +272,8 @@ logger.info("There were %s additional content items dropped due to duplicate "
             pre_dedup_unique - filtered.content_id.nunique())
 
 logger.info("filtered.shape after deduplication: %s", filtered.shape)
+
+filtered = filtered.drop(['_merge'], axis=1)
 
 # Create the labelled_level1 and labelled_level2 dfs
 
