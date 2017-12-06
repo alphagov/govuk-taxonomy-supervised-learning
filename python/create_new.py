@@ -12,7 +12,7 @@ from pipeline_functions import write_csv
 
 LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
 logging.config.fileConfig(LOGGING_CONFIG)
-logger = logging.getLogger('create_labelled')
+logger = logging.getLogger('create_new')
 
 # Setup input file paths
 
