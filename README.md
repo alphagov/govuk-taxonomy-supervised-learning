@@ -5,7 +5,8 @@ Automatically tag content tags to taxons using machine learning algorithms.
 ## Requirements
 
 * Python 3.4.6
-* See [requirements.txt](requirements.txt) for python dependencies
+* See [requirements.txt](requirements.txt) for python dependencies.
+* The amazon web services (AWS) command line interface (CLI), see below.
 
 ## Setting environment variables
 
@@ -16,6 +17,10 @@ A number of environment variables need to be set before running the cleaning scr
 |DATADIR|Path to the directory storing the data|`./data` (relative to the root of the repository -- you may need to set an absolute path)|
 |LOGGING_CONFIG|Path to the logging configuration file|`./python/logging.conf` (relative to the root of the repository -- you may need to set an absolute path)|
 |S3BUCKET|Path of the S3 bucket in which the data are stored.|s3://buod-govuk-taxonomy-supervised-learning|
+
+## Preparing your python environment
+
+The Makefile assumes that the `python3` command is pointing to the correct distribution of python, which was 3.4.6 in development. To install the correct package dependencies run `make init` from the project root.
 
 ## Getting the data
 
@@ -37,9 +42,11 @@ Then configure an AWS CLI profile with:
 
 When asked to set a default region set `eu-west-2` (London), and default format `json`.
 
-If these files do not exist in DATADIR, they will be created by Makefile by running `make`.
+If these files do not exist in DATADIR, they will be created by the Makefile by running `make`.
 
-The files `raw_content.json`, `raw_taxons.json`, and `document_type_group_lookup.json` can also be downloaded manually from the S3 bucket where they are stored using the `aws s3 cp` command. This command works exactly like the bash `cp`, e.g.: to copy a file from the s3 bucket to your local machine:
+### Manual download
+
+If necessary, files `raw_content.json`, `raw_taxons.json`, and `document_type_group_lookup.json` can be downloaded manually from the S3 bucket using the `aws s3 cp` command. This command works exactly like the bash `cp`, e.g.: to copy a file from the s3 bucket to your local machine:
 
 ```
 aws s3 cp s3://buod-govuk-taxonomy-supervised-learning/<file> <local file>
@@ -51,15 +58,19 @@ To copy a local file to the s3 bucket, use:
 aws s3 cp s3://buod-govuk-taxonomy-supervised-learning/<file> <local file>
 ```
 
-__NOTE: The s3 bucket is version controlled, so you do not need to rename the files to reflect the date files were produced. Just overwrite the existing file with the same filename.__
+Assuming you have set your `S3BUCKET` env variable, you can also just do:
+
+```
+aws s3 cp $S3BUCKET/<file> <local file>
+```
+
+__NOTE: The s3 bucket is version controlled, so if writing to the bucket, you do not need to rename the files to reflect the date files were produced. Just overwrite the existing file with the same filename.__
 
 Some files are stored compressed like `raw_content.json.gz`. Do not decompress these files, as the data cleaning scripts will load the data from the compressed files automatically.
 
 ## Running the cleaning scripts
 
-There is a Makefile which can be run to execute the cleaning scripts. After downloading the data to an appropriate dir, and pointing at it with the env vars, you can install python dependencies by running `make init`.
-
-Once complete, running `make` will launch the cleaning scripts, creating a number of files:
+After setting environment variables and installing the AWS CLI, running `make` will download the data and launch the cleaning scripts in order. The following files are created by the various cleaning scripts:
 
 |Filename (data/)|produced by (python/)|
 |---|---|
