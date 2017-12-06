@@ -11,6 +11,10 @@ taxons : $(DATADIR)/clean_taxons.csv
 content : $(DATADIR)/clean_content.csv
 labelled : $(DATADIR)/create_labelled.csv
 
+$(DATADIR)/new_content.csv : python/create_new.py $(DATADIR)/untagged_content.csv \
+    $(DATADIR)/old_taxons.csv
+	python3 python/create_new.py
+
 $(DATADIR)/create_labelled.csv : python/create_labelled.py $(DATADIR)/raw_taxons.json \
     taxons content
 	python3 python/create_labelled.py
