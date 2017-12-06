@@ -47,7 +47,7 @@ old_taxons = pd.read_csv(
 
 logger.info('old_taxons.shape: %s.', old_taxons.shape)
 logger.debug('old_taxons.head(): %s.', old_taxons.head())
-logger.info('old_taxons.columns: %s.', old_taxons.columns)
+logger.debug('old_taxons.columns: %s.', old_taxons.columns)
 
 
 # Add this to untagged data with a flag
@@ -80,7 +80,6 @@ new = pd.concat([untagged, old_taxons], ignore_index=True)
 
 logger.info('There were %s items in both the untagged and old-taxons data', 
             new.content_id.duplicated().sum())
-logger.info(new.columns)
 
 logger.info('dropping new duplicates by content_id')
 
