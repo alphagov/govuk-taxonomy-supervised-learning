@@ -175,11 +175,15 @@ empty_taxons_not_world = filtered[filtered._merge == 'right_only']
 
 logger.debug('empty_taxons_not_world.columns: %s', empty_taxons_not_world.columns)
 
-# TODO investigate why the level5taxon column has been lost here.
+# TODO Added level5taxon column back in here. Check data.
 
+logger.info("taxons clean columns: %s", clean_taxons.columns)
+logger.info("filtered_taxons columns: %s", filtered_taxons.columns)
+logger.info("taxons not world columns: %s", empty_taxons_not_world.columns)
 empty_taxons_not_world = empty_taxons_not_world[
     ['base_path_y', 'content_id_y', 'taxon_name', 'level1taxon',
-     'level2taxon', 'level3taxon', 'level4taxon', 'level5taxon']]
+     'level2taxon', 'level3taxon', 'level4taxon']]
+
 
 # Extract the data with no taxons (left_only) from above merge
 
