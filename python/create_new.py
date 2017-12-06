@@ -1,7 +1,7 @@
 # coding: utf-8
 '''Create labelled dataset from clean_content.csv and clean_taxons.csv
 '''
-
+# TODO: Add labelled_level1 data as new data for level2 prediction
 import os
 import logging
 import logging.config
@@ -50,7 +50,7 @@ logger.debug('old_taxons.head(): %s.', old_taxons.head())
 logger.info('old_taxons.columns: %s.', old_taxons.columns)
 
 
-# TODO: Add this to untagged data with a flag
+# Add this to untagged data with a flag
 logger.info("There are %s untagged rows", untagged.shape[0])
 logger.info("There are %s untagged content items", 
             untagged.content_id.nunique())
