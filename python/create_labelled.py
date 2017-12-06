@@ -110,6 +110,30 @@ empty_taxons = labelled[labelled._merge == 'right_only']
 
 logger.info('empty_taxons.shape: %s', empty_taxons.shape)
 
+# Extract the data with no taxons (left_only) from above merge
+
+# Content tagged to old taxons, not in taxons_clean topic taxonomy
+logger.info('Extracting content tagged to old taxons not in the topic taxonomy'
+            'old_taxons, (left_only)')
+content_old_taxons = labelled[
+    ['base_path', 'content_id', 'document_type',
+     'first_published_at', 'locale', 'primary_publishing_organisation',
+     'publishing_app', 'title', 'taxon_id']]
+
+content_old_taxons = content_old_taxons[labelled._merge == 'left_only']
+
+logger.info("There are %s taxons represented in the %s content item/taxon "
+            "combinations which have no corresponding taxon in the taxon data",
+            content_old_taxons.taxon_id.nunique(), content_old_taxons.shape[0])
+
+logger.info("There are %s content items/taxon combinations with missing taxon "
+            "because these were removed during taxon_clean.py",
+            content_old_taxons[content_old_taxons.taxon_id.isnull()].shape[0])
+
+
+
+# These data are added to untagged data in create_new.py with a flag
+
 
 # Drop all data from labelled that did not join cleanly
 
@@ -129,6 +153,7 @@ logger.info('labelled.shape after dropping duplicates: %s', labelled.shape)
 logger.info('Unique content_ids after dropping duplicates: %s', labelled.content_id.nunique())
 
 
+labelled = labelled.drop(['content_id_y','_merge', 'variable'], axis=1)
 # Filter by taxon to exclude specific taxons from predictions
 
 logger.info('Filtering by taxon to produced filtered_taxons')
@@ -164,7 +189,7 @@ logger.info("There are %s tagged content items/taxon combinations "
             "without a matching taxon", filtered['_merge'].value_counts()[0])
 logger.info("There are %s taxons with nothing tagged to them", filtered['_merge'].value_counts()[1])
 
-# TODO: index name for filtered is Unnamed:0, change this
+# TODO: index name for filtered is Unnamed:0, change this in write_csv function
 
 empty_taxons_not_world = filtered[filtered._merge == 'right_only']
 
@@ -173,30 +198,6 @@ logger.debug('empty_taxons_not_world.columns: %s', empty_taxons_not_world.column
 empty_taxons_not_world = empty_taxons_not_world[
     ['base_path_y', 'content_id_y', 'taxon_name', 'level1taxon',
      'level2taxon', 'level3taxon', 'level4taxon', 'level5taxon']]
-
-
-# Extract the data with no taxons (left_only) from above merge
-
-# Content tagged to old taxons, not in taxons_clean topic taxonomy
-
-content_old_taxons = labelled[
-    ['base_path', 'content_id', 'document_type',
-     'first_published_at', 'locale', 'primary_publishing_organisation',
-     'publishing_app', 'title', 'taxon_id']]
-
-content_old_taxons = content_old_taxons[labelled._merge == 'left_only']
-
-logger.info("There are %s taxons represented in the %s content item/taxon "
-            "combinations which have no corresponding taxon in the taxon data",
-            content_old_taxons.taxon_id.nunique(), content_old_taxons.shape[0])
-
-logger.info("There are %s content items/taxon combinations with missing taxon "
-            "because these were removed during taxon_clean.py",
-            content_old_taxons[content_old_taxons.taxon_id.isnull()].shape[0])
-
-labelled = labelled.drop(['content_id_y','_merge', 'variable'], axis=1)
-
-# TODO: Add this to untagged data with a flag
 
 
 # Tidy the filtered dataframe
