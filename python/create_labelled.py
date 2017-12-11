@@ -22,13 +22,13 @@ TAXONS_INPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv')
 
 # Set file output paths
 
-LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv')
-FILTERED_OUTPUT_PATH = os.path.join(DATADIR, 'filtered.csv')
-OLD_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'old_taxons.csv')
-EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv')
-LABELLED_LEVEL1_OUTPUT_PATH = os.path.join(DATADIR, 'labelled_level1.csv')
-LABELLED_LEVEL2_OUTPUT_PATH = os.path.join(DATADIR, 'labelled_level2.csv')
-EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons_not_world.csv')
+LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv.gz.gz')
+FILTERED_OUTPUT_PATH = os.path.join(DATADIR, 'filtered.csv.gz')
+OLD_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'old_taxons.csv.gz')
+EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv.gz')
+LABELLED_LEVEL1_OUTPUT_PATH = os.path.join(DATADIR, 'labelled_level1.csv.gz')
+LABELLED_LEVEL2_OUTPUT_PATH = os.path.join(DATADIR, 'labelled_level2.csv.gz')
+EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons_not_world.csv.gz')
 
 # Import clean_content (output by clean_content.py)
 
@@ -308,24 +308,22 @@ except AssertionError:
 # Write out dataframes
 
 write_csv(level1_tagged, 'level1 tagged labelled',
-          LABELLED_LEVEL1_OUTPUT_PATH, logger)
+          LABELLED_LEVEL1_OUTPUT_PATH, logger, compression='gzip')
 
 write_csv(level2_tagged, 'level2 tagged labelled',
-          LABELLED_LEVEL2_OUTPUT_PATH, logger)
+          LABELLED_LEVEL2_OUTPUT_PATH, logger, compression='gzip')
 
-write_csv(labelled, 'labelled', LABELLED_OUTPUT_PATH, logger)
+write_csv(labelled, 'labelled',
+          LABELLED_OUTPUT_PATH, logger, compression='gzip')
 
-write_csv(filtered, 'filtered', FILTERED_OUTPUT_PATH, logger)
+write_csv(filtered, 'filtered',
+          FILTERED_OUTPUT_PATH, logger, compression='gzip')
 
 write_csv(content_old_taxons, 'old_taxons',
-          OLD_TAXONS_OUTPUT_PATH, logger)
-
-# NOTE: I have saved this dataframe out here. In previous versions
-# it was getting overwritten by the empty taxons csv.
+          OLD_TAXONS_OUTPUT_PATH, logger, compression='gzip')
 
 write_csv(empty_taxons_not_world, 'empty_taxons_not_world',
-          EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH, logger)
+          EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH, logger, compression='gzip')
 
-logger.info('Writing empty_taxons to %s', EMPTY_TAXONS_OUTPUT_PATH)
 write_csv(empty_taxons, 'empty_taxons',
-          EMPTY_TAXONS_OUTPUT_PATH, logger)
+          EMPTY_TAXONS_OUTPUT_PATH, logger, compression='gzip')
