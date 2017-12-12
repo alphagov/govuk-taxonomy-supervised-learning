@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from lxml import etree
 
-def write_csv(dataframe, name, path, logger, index=False):
+def write_csv(dataframe, name, path, logger, index=False, **kwargs):
     '''
     Write a dataframe to CSV with logging
 
@@ -27,7 +27,7 @@ def write_csv(dataframe, name, path, logger, index=False):
 
     try:
 
-        dataframe.to_csv(path, index=index)
+        dataframe.to_csv(path, index=index, **kwargs)
 
     except Exception:
         logger.exception('Error writing %s to %s', name, path)
