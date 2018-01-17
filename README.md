@@ -157,7 +157,7 @@ The arguments are explained in the table below:
 |---|---|---|
 |-a|ami-1812bb61|The Conda based Amazon Machine Image. Other options are explained by [amazon](https://aws.amazon.com/blogs/machine-learning/new-aws-deep-learning-amis-for-machine-learning-practitioners/).|
 |-i|p2.xlarge|This is the smallest of the Deep Learning instance types. More information is available [here](https://aws.amazon.com/ec2/instance-types/). Note that the Deep Learning AMIs may not work with the newer p3 GPU instances.|
-|-s|snap-04eb15f2e4faee97a|The id of the snapshot containing the taxonomy data. This can be checked at the [snapshot](https://eu-west-1.console.aws.amazon.com/ec2/v2/home?region=eu-west-1#Snapshots:sort=snapshotId)|
+|-s|snap-04eb15f2e4faee97a|The id of the snapshot containing the taxonomy data. This can be checked at the [AWS console](https://eu-west-1.console.aws.amazon.com/ec2/v2/home?region=eu-west-1#Snapshots:sort=snapshotId)|
 |-p|playbooks/govuk-taxonomy-supervised-learning.yml|The ansible playbook describing deployment tasks required on to setup the instance.|
 |-r|eu-west-1|The region in which the instance will be deployed. At present this must be set to `eu-west-1` (Ireland) as some deep learning instances are not available in the `eu-west-2` (London) zone, and the snapshot is currently in `eu-west-1` (although could be copied elsewhere.|
 
