@@ -164,8 +164,10 @@ The arguments are explained in the table below:
 Once the instance has instantiated, you will need to run the following commands:
 
 * SSH tunnel into the instance with `ssh -L localhost:8888:localhost:8888 ubuntu@<databox IP>`
+* Open tmux to ensure that any operations do not fail if you disconnect
 * Activate the tensorflow_p36 environment and run `jupyter notebook` on the instance:
 ```
+tmux
 source activate tensorflow_p36
 jupyter notebook
 ```
@@ -175,6 +177,7 @@ This will set up a notebook server, for which you will be provided a link in the
 ### Tensorboard
 
 * To run tensorboard ensure that the tensorboard callback has been enabled in the model, then log into the instance again in a new terminal creating a new tunnel with `ssh -L localhost:6006:localhost:6006 ubuntu@<databox IP>`. 
+* Open tmux to ensure the task continues running even if you disconnect.
 * Activate the `tensorflow_p36` environment with `source activate tensorflow_p36`.
 * Run `tensorboard --log_dir=<path to logging>`.
 * Open a browser on your local machine and navigate to <https://localhost:6006> to access the tensorboard sever.
