@@ -11,3 +11,4 @@ deap==1.2.2
 tqdm==4.19.4
 stopit==1.1.1
 seaborn==0.8.1
+pytest==3.3.2
