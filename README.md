@@ -95,7 +95,7 @@ The cleaned files are used by the python notebooks contained in `python/notebook
 
 ## Jupyter notebooks
 
-### Setting up a Jupyter kernal
+### Setting up a Jupyter kernel
 
 You should use your virtualenv when running jupyter notebooks. Follow the following steps:
 
@@ -138,8 +138,51 @@ You should now be able to see your kernel in the IPython notebook menu: Kernel -
 
 ## Logging
 
-The default logging configuration (set in `./python/`) will do the following things:
+The default logging configuration used by the data transformation pipeline (set in `./python/`) will do the following things:
 
 * Write a simple log to stdout (console) at `INFO` level
 * Write a more detailed log to a file at `DEBUG` level (by default `/tmp/govuk-taxonomy-supervised-learning.log`).
+
+## Setting up Tensorflow/Keras on GPU backed instances on AWS
+
+Setting up GPU-backed instances on AWS is greatly facilitated by using [databox](https://github.com/ukgovdatascience/databox). Currently the features required to create a deep learning instances are in [Pull Request 31](https://github.com/ukgovdatascience/databox/pull/31). Once these are merged into master, operate databox from master, but for now you will need to `git  checkout feature/playbook_argument`. Once you have databox and all its dependencies installed, the following command will instantiate an instance prepared for Deep Learning on AWS:
+
+```
+./databox.sh -a ami-1812bb61 -r eu-west-1 -i p2.xlarge -s snap-04eb15f2e4faee97a -p playbooks/govuk-taxonomy-supervised-learning.yml up
+```
+
+The arguments are explained in the table below:
+
+|Argument|Value|Description|
+|---|---|---|
+|-a|ami-1812bb61|The Conda based Amazon Machine Image. Other options are explained by [amazon](https://aws.amazon.com/blogs/machine-learning/new-aws-deep-learning-amis-for-machine-learning-practitioners/).|
+|-i|p2.xlarge|This is the smallest of the Deep Learning instance types. More information is available [here](https://aws.amazon.com/ec2/instance-types/). Note that the Deep Learning AMIs may not work with the newer p3 GPU instances.|
+|-s|snap-04eb15f2e4faee97a|The id of the snapshot containing the taxonomy data. This can be checked at the [AWS console](https://eu-west-1.console.aws.amazon.com/ec2/v2/home?region=eu-west-1#Snapshots:sort=snapshotId)|
+|-p|playbooks/govuk-taxonomy-supervised-learning.yml|The ansible playbook describing deployment tasks required on to setup the instance.|
+|-r|eu-west-1|The region in which the instance will be deployed. At present this must be set to `eu-west-1` (Ireland) as some deep learning instances are not available in the `eu-west-2` (London) zone, and the snapshot is currently in `eu-west-1` (although could be copied elsewhere.|
+
+Once the instance has instantiated, you will need to run the following commands:
+
+* SSH tunnel into the instance with `ssh -L localhost:8888:localhost:8888 ubuntu@<databox IP>`
+* Open tmux to ensure that any operations do not fail if you disconnect
+* Activate the tensorflow_p36 environment and run `jupyter notebook` on the instance:
+```
+tmux
+source activate tensorflow_p36
+jupyter notebook
+```
+This will set up a notebook server, for which you will be provided a link in the console.
+* Log in to notebook server on your __local__ machine by copying the link generated on the server into a browser. This will give you access to jupyter notebooks on your local machine.
+
+### Tensorboard
+
+* To run tensorboard ensure that the tensorboard callback has been enabled in the model, then log into the instance again in a new terminal creating a new tunnel with `ssh -L localhost:6006:localhost:6006 ubuntu@<databox IP>`. 
+* Open tmux to ensure the task continues running even if you disconnect.
+* Activate the `tensorflow_p36` environment with `source activate tensorflow_p36`.
+* Run `tensorboard --log_dir=<path to logging>`.
+* Open a browser on your local machine and navigate to <https://localhost:6006> to access the tensorboard sever.
+
+### Check that the GPU is doing the work
+
+* Ensure that your model is running on the instance GPU by running `nvidia-smi` in a new terminal on the instance (you can run this repeatedly with `watch -n 10 nvidia-smi` to update every 10 seconds).
 
