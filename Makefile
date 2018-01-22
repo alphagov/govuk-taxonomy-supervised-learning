@@ -1,7 +1,7 @@
 # Makefile 
 # Run `make` to clean taxons and content.
-# Run `make init` to install required packages with pip.
-# Run `make test` to run tests on pipeline_functions.
+# Run `make pip_install` to install required packages with pip.
+# Run `make check` to run tests on pipeline_functions.
 # Run `make clean` to remove all output files except raw data
 # 	(i.e everything but the raw files downloaded from AWS)
 # Run `make clean_all` to remove all output files and raw data
@@ -62,13 +62,13 @@ clean_all : clean
 	-rm -f $(DATADIR)/document_type_group_lookup.json \
 	    $(DATADIR)/raw_taxons.json $(DATADIR)/raw_content.json.gz
 
-init : 
+pip_install:
 	pip3 install -r python/requirements.txt
 
-test : 
+check:
 	cd python && python3 -m pytest
 
 help :
 	@cat Makefile
 
-.PHONY : init test clean clean_all upload help
+.PHONY : pip_install check clean clean_all upload help
