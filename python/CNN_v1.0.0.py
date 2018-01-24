@@ -195,7 +195,6 @@ labels = binary_multilabel[indices]
 # Shuffle data and standardise indices
 
 x_train, y_train, x_dev, y_dev, x_test, y_test = shuffle_split(data, labels, logger, seed=0, split={ "train": 0.8, "dev" : 0.1, "test": 0.1})
-
 # Prepare embedding layer
 
 embedding_layer = Embedding(
@@ -407,7 +406,7 @@ def get_predictions(new_texts, df, level1taxon=False):
 
 # Read in untagged content
 
-untagged_raw = pd.read_csv(os.path.join(DATADIR, 'untagged_content.csv'), dtype=object)
+untagged_raw = pd.read_csv(os.path.join(DATADIR, 'untagged_content.csv.gz'), dtype=object, compression='gzip')
 
 new_texts = untagged_raw['combined_text']
 
@@ -420,9 +419,11 @@ logger.debug('Number of content items tagged to taxons with more than p_threshol
 
 pred_untagged.loc[(pred_untagged['probability'] > 0.65) & (pred_untagged['probability'] < 0.85)].sort_values(by='probability', ascending=False)
 
-# TODO Use the logging friendly class and method defined pipeline_functions.py
-
-pred_untagged.to_csv(os.path.join(DATADIR, 'predictions_for_untagged_data_trainingdatatok.csv'), index=False)
+write_csv(
+    pred_untagged, 'pred_untagged',
+    os.path.join(DATADIR, 'predictions_for_untagged_data_trainingdatatok.csv.gz'),
+    logger, compression='gzip'
+    )
 
 # Apply tokenizer to our text data
 
@@ -430,18 +431,21 @@ tokenizer.fit_on_texts(new_texts)
 
 pred_untagged_refit_tok = get_predictions(new_texts, untagged_raw)
 
-# TODO Use the logging friendly class and method defined pipeline_functions.py
-
 # write to csv
-pred_untagged_refit_tok.to_csv(os.path.join(DATADIR, 'predictions_for_untagged_data_refittok.csv'), index=False)
+
+write_csv(
+    pred_untagged_refit_tok, 'pred_untagged_refit_tok',
+    os.path.join(DATADIR, 'predictions_for_untagged_data_refittok.csv.gz'),
+    logger, compression='gzip'
+    )
 
 # New data (untagged + old taxons)
 
-# old_taxons data has no combined text. This needs fixing in the data pipeline
-# before being able to use these data for predictions.
+# old_taxons data has no combined text. This needs fixing in the data 
+# pipeline before being able to use these data for predictions.
 
 #read in untagged content
-new_raw = pd.read_csv(os.path.join(DATADIR, 'new_content.csv'), dtype=object)
+new_raw = pd.read_csv(os.path.join(DATADIR, 'new_content.csv.gz'), dtype=object, compression='gzip')
 
 # TODO explain these!
 
@@ -451,23 +455,25 @@ logger.debug(len(new_raw[new_raw['combined_text'].isna()]))
 logger.debug((new_raw.loc[(new_raw['combined_text'].isna()) & (new_raw['untagged_type'] != 'untagged')]).shape)
 
 # Make a copy so you can edit data without needed to read in each time
-new_df = new_raw.copy()
 
+new_df = new_raw.copy()
 pred_new = get_predictions(new_df)
 
-# TODO Set this probability in an environment var
-# Keep only rows where prob of taxon > 0.5
+# Keep only rows where prob of taxon is greater than threshold
 
-pred_new = pred_new.loc[pred_new['probability'] > 0.5]
+pred_new = pred_new.loc[pred_new['probability'] > PREDICTION_PROBA]
 
-# TODO Use the logging friendly class and method defined pipeline_functions.py
-# write to csv
+# Write to csv
 
-pred_new.to_csv(os.path.join(DATADIR, 'predictions_for_new_data.csv'), index=False)
+write_csv(
+    pred_new, 'pred_new',
+    os.path.join(DATADIR, 'predictions_for_new_data.csv.gzip'), 
+    logger, compression='gzip'
+    )
 
 # Labelled at level1only
 
-labelled_level1 = pd.read_csv(os.path.join(DATADIR, 'labelled_level1.csv'), dtype=object)
+labelled_level1 = pd.read_csv(os.path.join(DATADIR, 'labelled_level1.csv.gz'), dtype=object, compression='gzip')
 
 level1_texts = labelled_level1['combined_text']
 
@@ -478,7 +484,10 @@ tokenizer.fit_on_texts(texts)
 pred_labelled_level1 = get_predictions(level1_texts, labelled_level1, level1taxon=True)
 pred_labelled_level1.sort_values(by='probability', ascending=False)
 
-# TODO Use the logging friendly class and method defined pipeline_functions.py
 # Write to csv
 
-pred_labelled_level1.to_csv(os.path.join(DATADIR, 'predictions_for_level1only.csv'), index=False)
+write_csv(
+    pred_labelled_level1, 'pred_labelled_level1',
+    os.path.join(DATADIR, 'predictions_for_level1only.csv.gz'), 
+    logger, compression='gzip'
+    )
