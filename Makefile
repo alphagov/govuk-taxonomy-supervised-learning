@@ -1,7 +1,7 @@
-# Makefile 
+# Makefile
 # Run `make` to clean taxons and content.
-# Run `make init` to install required packages with pip.
-# Run `make test` to run tests on pipeline_functions.
+# Run `make pip_install` to install required packages with pip.
+# Run `make check` to run tests on pipeline_functions.
 # Run `make clean` to remove all output files except raw data
 # 	(i.e everything but the raw files downloaded from AWS)
 # Run `make clean_all` to remove all output files and raw data
@@ -28,10 +28,10 @@ $(DATADIR)/clean_content.csv : python/clean_content.py $(DATADIR)/raw_content.js
 $(DATADIR)/document_type_group_lookup.json
 	python3 python/clean_content.py
 
-$(DATADIR)/document_type_group_lookup.json : 
+$(DATADIR)/document_type_group_lookup.json :
 	aws s3 cp $(S3BUCKET)/document_type_group_lookup.json $(DATADIR)/document_type_group_lookup.json
 
-$(DATADIR)/raw_taxons.json : 
+$(DATADIR)/raw_taxons.json :
 	aws s3 cp $(S3BUCKET)/raw_taxons.json $(DATADIR)/raw_taxons.json
 
 $(DATADIR)/raw_content.json.gz :
@@ -39,7 +39,7 @@ $(DATADIR)/raw_content.json.gz :
 
 # Forgive this horrible repetition.
 
-upload: labelled 
+upload: labelled
 	aws s3 cp $(DATADIR)/untagged_content.csv $(S3BUCKET)/untagged_content.csv
 	aws s3 cp $(DATADIR)/empty_taxons.csv $(S3BUCKET)/empty_taxons.csv
 	aws s3 cp $(DATADIR)/labelled.csv $(S3BUCKET)/labelled.csv
@@ -51,7 +51,7 @@ upload: labelled
 	aws s3 cp $(DATADIR)/new_content.csv $(S3BUCKET)/new_content.csv
 
 
-clean : 
+clean :
 	-rm -f $(DATADIR)/clean_taxons.csv $(DATADIR)/clean_content.csv \
 	    $(DATADIR)/untagged_content.csv $(DATADIR)/empty_taxons.csv \
 	    $(DATADIR)/labelled.csv $(DATADIR)/filtered.csv $(DATADIR)/old_taxons.csv \
@@ -62,13 +62,13 @@ clean_all : clean
 	-rm -f $(DATADIR)/document_type_group_lookup.json \
 	    $(DATADIR)/raw_taxons.json $(DATADIR)/raw_content.json.gz
 
-init : 
+pip_install:
 	pip3 install -r python/requirements.txt
 
-test : 
+check:
 	cd python && python3 -m pytest
 
 help :
 	@cat Makefile
 
-.PHONY : init test clean clean_all upload help
+.PHONY : pip_install check clean clean_all upload help

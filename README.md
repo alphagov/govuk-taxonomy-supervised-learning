@@ -20,7 +20,7 @@ A number of environment variables need to be set before running the cleaning scr
 
 ## Preparing your python environment
 
-The Makefile assumes that the `python3` command is pointing to the correct distribution of python, which was 3.4.6 in development. To install the correct package dependencies run `make init` from the project root.
+The Makefile assumes that the `python3` command is pointing to the correct distribution of python, which was 3.4.6 in development. To install the correct package dependencies run `make pip_install` from the project root.
 
 ## Getting the data
 
