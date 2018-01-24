@@ -27,6 +27,7 @@ from model_utils import WeightedBinaryCrossEntropy
 
 LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
 DATADIR = os.getenv('DATADIR')
+DATAFILE = os.getenv('DATAFILE')
 
 # Model hyperparameters
 
@@ -38,78 +39,69 @@ NUM_WORDS = int(os.environ.get('NUM_WORDS'))
 EPOCHS = int(os.environ.get('EPOCHS'))
 BATCH_SIZE = int(os.environ.get('BATCH_SIZE'))
 
-# Hyperparameters
+PREDICTION_PROBA = float(os.environ.get('PREDICTION_PROBA'))
+# Set up logging
 
-"""
-Intuition for POS_RATIO is that it penalises the prediction of zero for
-everything, which is attractive to the model because the multilabel y
-matrix is super sparse.
+logging.config.fileConfig(LOGGING_CONFIG)
+logger = logging.getLogger('CNN_v1.0.0')
 
-Increasing POS_RATIO should penalise predicting zeros more.
+logger.info('---- Model hyperparameters ----')
+logger.info('')
+logger.info('MAX_SEQUENCE_LENGTH: %s', MAX_SEQUENCE_LENGTH)
+logger.info('EMBEDDING_DIM:       %s', EMBEDDING_DIM)
+logger.info('P_THRESHOLD:         %s', P_THRESHOLD)
+logger.info('NUM_WORDS:           %s', NUM_WORDS)
+logger.info('EPOCHS:              %s', EPOCHS)
+logger.info('BATCH_SIZE:          %s', BATCH_SIZE)
+logger.info('')
+logger.info('---- Other parameters ----')
+logger.info('')
+logger.info('PREDICTION_PROBA:   %s', PREDICTION_PROBA)
+logger.info('LOGGING_CONFIG:     %s', LOGGING_CONFIG)
+logger.info('DATADIR:            %s', DATADIR)
+logger.info('DATAFILE:           %s', DATAFILE)
+logger.info('')
+logger.info('--------------------------')
+logger.info('')
+# Read in content items tagged to level 2 taxons or lower in the topic taxonomy
 
-EMBEDDING_DIM: Keras embedding layer output_dim = Dimension of the dense embedding
-P_THRESHOLD: Threshold for probability of being assigned to class
-POS_RATIO: Ratio of positive to negative for each class in weighted binary
-cross entropy loss function
-NUM_WORDS: Keras tokenizer num_words: None or int. Maximum number of words to
-work with (if set, tokenization will be restricted to the top num_words most
-common words in the dataset).
-"""
-
-# Read in data
-# Content items tagged to level 2 taxons or lower in the topic taxonomy
+logger.info('Loading data from %s', DATAFILE)
 
 labelled_level2 = pd.read_csv(
-    os.path.join(DATADIR, 'labelled_level2.csv.gz'), dtype=object, compression='gzip'
+    os.path.join(DATADIR, DATAFILE),
+    dtype=object,
+    compression='gzip'
     )
 
-# Create dictionary mapping taxon codes to string labels
+logger.info('input data has shape %s:', labelled_level2.shape)
+
 # Collapse World level2taxons
 
 labelled_level2.loc[labelled_level2['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
 
-# Creating categorical variable for level2taxons from values
 labelled_level2['level2taxon'] = labelled_level2['level2taxon'].astype('category')
 
-# Get the category numeric values (codes) and avoid zero-indexing
+# Avoid zero-indexing numeric category codes (this is explained later...)
+# NOTE: Probably a better way than adding 1 to codes here.
+
 labels = labelled_level2['level2taxon'].cat.codes + 1
 
-# Create dictionary of taxon category code to string label for use in model evaluation
+# Create dictionary of taxon code to string label for use in model evaluation
+
 labels_index = dict(zip((labels), labelled_level2['level2taxon']))
 
 logger.debug('Number of labels extracted from %s: %s.', 
         'labelled_level2.csv.gz', len(labels_index))
 
-# Create target/Y
-"""
-NOTE: when using the categorical_crossentropy loss, your targets should be
-in categorical format (e.g. if you have 10 classes, the target for each
-sample should be a 10-dimensional vector that is all-zeros expect for a 1
-at the index corresponding to the class of the sample).
+# Create targets by reshaping to get columns for each level2taxon
 
-In multilabel learning, the joint set of binary classification tasks is
-expressed with label binary indicator array: each sample is one row of a
-2d array of shape (n_samples, n_classes) with binary values:
-
-* The one, i.e. the non zero elements, corresponds to the subset of labels.
-* An array such as np.array([[1, 0, 0], [0, 1, 1], [0, 0, 0]]) represents
-label 0 in the first sample, labels 1 and 2 in the second sample, and no
-labels in the third sample.
-
-Producing multilabel data as a list of sets of labels may be more intuitive.
-"""
-
-# First reshape wide to get columns for each level2taxon and row
-# number = number unique urls
-
-# TODO clarify this comment:  Get a smaller copy of data for pivoting ease
-# (think you can work from full data actually and other cols get droopedauto)
+# TODO: Probably don't need to create level2_reduced here
 
 level2_reduced = labelled_level2[['content_id', 'level2taxon', 'combined_text']].copy()
 
 # How many level2taxons are there?
 
-logger.debug('Number of unique level2 taxons: %s.', level2_reduced.level2taxon.nunique())
+logger.debug('Unique level2 taxons: %s.', level2_reduced.level2taxon.nunique())
 
 # Count the number of taxons per content item into new column
 level2_reduced['num_taxon_per_content'] = level2_reduced.groupby(["content_id"])['content_id'].transform("count")
@@ -127,7 +119,7 @@ multilabel = (level2_reduced.pivot_table(
     values='num_taxon_per_content')
              )
 
-logger.debug('Number of unique level2 taxons: %s.', level2_reduced.level2taxon.nunique())
+logger.debug('Number of unique level2 taxons: %s', level2_reduced.level2taxon.nunique())
 logger.debug('Level2_reduced shape: %s', level2_reduced.shape)
 logger.debug('Pivot table shape (no duplicates): %s ', multilabel.shape)
 
@@ -137,74 +129,59 @@ Convert the number_of_taxons_per_content values to 1, meaning there was an entry
 for this taxon and this content_id, 0 otherwise
 
 """
+
+# Convert labels to binary
+
 binary_multilabel = multilabel.notnull().astype('int')
 
 # Will convert columns to an array of shape
 
-logger.debug('Shape of Y multilabel array before train/val/test split: %s',
+logger.debug('Shape of multilabel array before train/dev/test split: %s',
         binary_multilabel[list(binary_multilabel.columns)].values.shape)
 
 # Convert columns to an array. Each row represents a content item, each column
-# an individual taxon
+# an individual taxon.
 
 binary_multilabel = binary_multilabel[list(binary_multilabel.columns)].values
 
-logger.debug('Shape of Y multilabel array before train/val/test split: %s',
-             binary_multilabel[list(binary_multilabel.columns)].values.shape)
-
 logger.debug('Example row of multilabel array: %s', binary_multilabel[2])
-
-# TODO move to assert
 logger.debug('Type of binary_multilabel: %s', type(binary_multilabel))
 
-"""
-Create language data/X
+# Create language data/X
 
+"""
 Format our text samples and labels into tensors that can be fed into
 a neural  network. To do this, we will rely on Keras utilities
 keras.preprocessing.text.Tokenizer and keras.preprocessing.sequence.pad_sequences.
 """
+
 # The pivot table has two indices
-logger.debug(multilabel.index.names)
+
+logger.debug('Printing indicies of multilabel target: %s', multilabel.index.names)
 
 # Extract combined text index to array
+
 texts = multilabel.index.get_level_values('combined_text')
-logger.debug(texts.shape)
+logger.debug('Shape of texts variable: %s', texts.shape)
 
-"""
-Tokenizer
-
-Tokenizer = Class for vectorizing texts, or/and turning texts into sequences 
-(=list of word indexes, where the word of rank i in the dataset (starting at 1) 
-has index i)
-"""
-
-"""
-Bag of words method
-
-# NUM_WORDS: None or int. Maximum number of words to work with (if set, 
-# tokenization will be restricted to the top num_words most common words in
-# the dataset).
-"""
+# Instantiate keras tokenizer
 
 tokenizer = Tokenizer(num_words=NUM_WORDS) 
 
-# apply tokenizer to our text data
+# Fit tokenizer to text data
 
 tokenizer.fit_on_texts(texts)
 
-"""
-List of word indexes, where the word of rank i in the dataset (starting at 1)
-has index i
-"""
+# Tokenise texts to create a list of word indexes, where the word of rank i
+# in the dataset (starting at 1) has index i
 
 sequences = tokenizer.texts_to_sequences(texts)
 
-# dictionary mapping words (str) to their rank/index (int).
-# Only set after fit_on_texts was called.
-word_index = tokenizer.word_index
+# Create dictionary mapping words (str) to their rank/index (int).
 
-logger.debug('Found %s unique tokens', len(word_index))
+logger.debug('There are %s unique tokens in texts', len(tokenizer.word_index))
+
+# Pad sequences to MAX_SEQUENCE_LENGTH, as texts are non-standard length
 
 data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
 
@@ -228,9 +205,6 @@ np.random.shuffle(indices)
 data = data[indices]
 labels = binary_multilabel[indices]
 
-# NOTE The below separation is random selection WITH replacement
-# so some of the test data will be in the training set!
-
 nb_test_samples = int(0.1 * data.shape[0])
 nb_val_samples = int(0.2 * data.shape[0])
 nb_training_samples = int(0.8 * data.shape[0])
@@ -248,29 +222,23 @@ y_val = labels[-nb_val_samples:-nb_test_samples]
 x_test = data[-nb_test_samples:]
 y_test = labels[-nb_test_samples:]
 
-logger.debug('Shape of x_train: %s', x_train.shape)
-logger.debug('Shape of y_train: %s', y_train.shape)
-logger.debug('Shape of x_val: %s', x_val.shape)
-logger.debug('Shape of y_val: %s', y_val.shape)
-logger.debug('Shape of x_val: %s', x_val.shape)
-logger.debug('Shape of y_val: %s', y_val.shape)
+logger.info('Shape of x_train: %s', x_train.shape)
+logger.info('Shape of y_train: %s', y_train.shape)
+logger.info('Shape of x_val: %s', x_val.shape)
+logger.info('Shape of y_val: %s', y_val.shape)
+logger.info('Shape of x_val: %s', x_val.shape)
+logger.info('Shape of y_val: %s', y_val.shape)
 
 # Check these are different arrays!
 np.array_equal(y_val, y_test)
 
-"""
-Preparing the Embedding layer
+# Prepare embedding layer
 
-An Embedding layer should be fed sequences of integers, i.e. a 2D input of shape (samples, indices). These input sequences should be padded so that they all have the same length in a batch of input data (although an Embedding layer is capable of processing sequence of heterogenous length, if you don't pass an explicit input_length argument to the layer).
- 
- All that the Embedding layer does is to map the integer inputs to the vectors found at the corresponding index in the embedding matrix, i.e. the sequence [1, 2] would be converted to [embeddings[1], embeddings[2]]. This means that the output of the Embedding layer will be a 3D tensor of shape (samples, sequence_length, embedding_dim).
-"""
-
-# NOTE Stopwords haven't been removed yet...
-
-embedding_layer = Embedding(len(word_index) + 1, 
-                            EMBEDDING_DIM, 
-                            input_length=MAX_SEQUENCE_LENGTH)
+embedding_layer = Embedding(
+    len(tokenizer.word_index) + 1,
+    EMBEDDING_DIM, 
+    input_length=MAX_SEQUENCE_LENGTH
+    )
 
 # ### Custom loss function
 
@@ -310,43 +278,19 @@ x = Dense(NB_CLASSES, activation='sigmoid', name = 'fully_connected')(x)
 
 model = Model(sequence_input, x)
 
-sequence_input
+logger.info('Model sequence input:\n%s', sequence_input)
 
 # Compile model
-# Note that the model only reports f1 here at present (which is a departure from
-# the v1.0.0. notebook.
+
+# NOTE that the model only reports f1 here at present (which is a departure
+# from the v1.0.0. notebook.
 
 model.compile(loss=WeightedBinaryCrossEntropy(POS_RATIO),
               optimizer='rmsprop',
               metrics=['binary_accuracy', f1])
 
 
-
-logger.debug(model.summary())
-
-"""
-Metric values are recorded at the end of each epoch on the training dataset.
-If a validation dataset is also provided, then the metric recorded is also
-calculated for the validation dataset.
-
-All metrics are reported in verbose output and in the history object returned
-from calling the fit() function. In both cases, the name of the metric
-function is used as the key for the metric values. In the case of metrics
-for the validation dataset, the “val_” prefix is added to the key.
-
-You have now built a function to describe your model. To train and test this
-model, there are four steps in Keras:
-
-1. Create the model by calling the function above
-2. Compile the model by calling `model.compile(...)`
-3. Train the model on train data by calling `model.fit(...)`
-4. Test the model on test data by calling `model.evaluate(x = ..., y = ...)`
-
-If you want to know more about `model.compile()`, `model.fit()`, 
-`model.evaluate()` and their arguments, refer to the official Keras
-documentation https://keras.io/models/model/.
-""" 
-
+logger.debug('Model summary: %s', model.summary())
 
 # Tensorboard callbacks /metrics /monitor training
 
@@ -384,8 +328,8 @@ metrics = Metrics()
 
 # Train model
 
-# NOTE: Disable tensorboard callback which massively increases model runtime
-# from 17 minutes to 3 hours (roughly!). Add in callbacks=[tb] to replace.
+# NOTE:  Tensorboard callback is disabled to reduce model run time from
+# approx 3 horus to 17 minutes
 
 model.fit(
     x_train, y_train, 
@@ -409,30 +353,29 @@ y_pred = y_prob.copy()
 y_pred[y_pred>P_THRESHOLD] = 1
 y_pred[y_pred<P_THRESHOLD] = 0
 
-logger.debug(f1_score(y_train, y_pred, average='micro'))
+logger.info('TRAINING F1 (micro):\n\n%s', f1_score(y_train, y_pred, average='micro'))
 
-# average= None, the scores for each class are returned.
-logger.debug(
-        precision_recall_fscore_support(y_train, y_pred, average=None, sample_weight=None)
-        )
+# Return scores for each class with average=None
+
+logger.debug('TRAINING F1 (for each class):\n\n%s,', precision_recall_fscore_support(y_train, y_pred, average=None, sample_weight=None))
 
 # Validation metrics
 
 y_pred_val = model.predict(x_val)
+
+# Use P_THRESHOLD to choose predicted class
 
 y_pred_val[y_pred_val>=P_THRESHOLD] = 1
 y_pred_val[y_pred_val<P_THRESHOLD] = 0
 
 # average= None, the scores for each class are returned.
 
-logger.debug(precision_recall_fscore_support(y_val, y_pred_val, average=None, sample_weight=None))
+logger.debug('DEVELOPMENT F1 (for each class):\n\n%s,'precision_recall_fscore_support(y_val, y_pred_val, average=None, sample_weight=None))
 
 # Calculate globally by counting the total true positives, false negatives 
 # and false positives.
 
-logger.debug(precision_recall_fscore_support(
-    y_val, y_pred_val, average='micro', sample_weight=None)
-     )
+logger.info('DEVELOPMENT F1 (micro): %s', precision_recall_fscore_support(y_val, y_pred_val, average='micro', sample_weight=None))
 
 # ## Tag unlabelled content
 
