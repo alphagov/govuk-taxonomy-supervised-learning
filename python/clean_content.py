@@ -8,6 +8,10 @@ import pathlib
 import logging
 import logging.config
 import pandas as pd
+from pandas.io.json import json_normalize
+import json
+from lxml import etree,html
+from collections import Counter,OrderedDict
 from pipeline_functions import extract_text, write_csv
 
 # Setup pipeline logging
@@ -104,7 +108,51 @@ content.drop('_merge', axis=1, inplace=True)
 
 logger.info('Extracting body from body dict')
 
-content = content.assign(body = [d.get('body') for d in content.details])
+def is_json(raw_text):
+    try:
+        json_normalize(raw_text).columns.tolist()
+    except AttributeError:
+        return False
+    return True
+
+def is_html(raw_text):
+    return html.fromstring(str(raw_text)).find('.//*') is not None
+
+look = ['text', 'child_sections', 'headers']
+child_keys = ['title','description']
+
+def get_text(x):
+    total_text = ""
+    ### From dict to json and back (to OrderedDict).
+    string_json = json.dumps(OrderedDict(x))
+    order_json = json.loads(string_json,object_pairs_hook=OrderedDict)
+    ### Iterate over json from details.
+    for key,raw_text in order_json.items():
+        if isinstance(raw_text,str) and len(raw_text)>2:
+            raw_token = raw_text.split(" ")
+            if len(raw_token)>1:
+                raw_string = extract_text(raw_text)
+                total_text += " " + raw_string
+        elif isinstance(raw_text,list) and len(raw_text)>0:
+            for sub_text in raw_text:
+                if is_json(sub_text):
+                    string_json2 = json.dumps(OrderedDict(sub_text))
+                    order_json2 = json.loads(string_json2,object_pairs_hook=OrderedDict)
+                    if 'body' in order_json2.keys() and \
+                                isinstance(order_json2['body'],str):
+                            raw_string2 = extract_text(order_json2['body'])
+                            if len(raw_string2.split(" ")) > 10:
+                                total_text += " " + raw_string2
+                    elif 'child_sections' in order_json2.keys():
+                            for child in order_json2['child_sections']:
+                                for key in child_keys:
+                                    total_text += " " + child[key]
+                elif is_html(sub_text):
+                    str_from_html = extract_text(sub_text)
+                    total_text += " " + str_from_html
+    return total_text.strip()
+
+content['body']= content['details'].map(get_text)
 
 logger.debug('Printing top 10 from content.body: %s.', content.body[0:10])
 
