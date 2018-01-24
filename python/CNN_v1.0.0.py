@@ -21,8 +21,7 @@ import tensorflow as tf
 import pandas as pd
 import numpy as np
 from pipeline_functions import write_csv
-from weightedbinarycrossentropy import WeightedBinaryCrossEntropy
-from utils import f1, Metrics, get_predictions, shuffle_split
+from model_utils import WeightedBinaryCrossEntropy
 
 # Get environmental vars from systems
 
@@ -275,27 +274,6 @@ embedding_layer = Embedding(len(word_index) + 1,
 
 # ### Custom loss function
 
-class WeightedBinaryCrossEntropy(object):
-
-    def __init__(self, pos_ratio):
-        neg_ratio = 1. - pos_ratio
-        # self.pos_ratio = tf.constant(pos_ratio, tf.float32)
-        self.pos_ratio = pos_ratio
-        # self.weights = tf.constant(neg_ratio / pos_ratio, tf.float32)
-        self.weights = neg_ratio / pos_ratio
-        self.__name__ = "weighted_binary_crossentropy({0})".format(pos_ratio)
-
-    def __call__(self, y_true, y_pred):
-        return self.weighted_binary_crossentropy(y_true, y_pred)
-
-    def weighted_binary_crossentropy(self, y_true, y_pred):
-        # Transform to logits
-        epsilon = tf.convert_to_tensor(K.common._EPSILON, y_pred.dtype.base_dtype)
-        y_pred = tf.clip_by_value(y_pred, epsilon, 1 - epsilon)
-        y_pred = tf.log(y_pred / (1 - y_pred))
-
-        cost = tf.nn.weighted_cross_entropy_with_logits(y_true, y_pred, self.weights)
-        return K.mean(cost * self.pos_ratio, axis=-1)
 
 y_true_arr = np.array([0,1,0,1], dtype="float32")
 y_pred_arr = np.array([0,0,1,1], dtype="float32")
