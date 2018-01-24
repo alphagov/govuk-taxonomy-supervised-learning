@@ -12,3 +12,5 @@ tqdm==4.19.4
 stopit==1.1.1
 seaborn==0.8.1
 pytest==3.3.2
+requests==2.18.4
+responses==0.8.1
