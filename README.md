@@ -18,7 +18,7 @@ A number of environment variables need to be set before running the cleaning scr
 |LOGGING_CONFIG|Path to the logging configuration file|`./python/logging.conf` (relative to the root of the repository -- you may need to set an absolute path)|
 |S3BUCKET|Path of the S3 bucket in which the data are stored.|s3://buod-govuk-taxonomy-supervised-learning|
 
-## Preparing your python environment
+## Preparing your python environment
 
 The Makefile assumes that the `python3` command is pointing to the correct distribution of python, which was 3.4.6 in development. To install the correct package dependencies run `make init` from the project root.
 
