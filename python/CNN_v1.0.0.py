@@ -11,18 +11,17 @@ import logging.config
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Model
-from keras.callbacks import TensorBoard, Callback
-from keras.losses import binary_crossentropy
+from keras.callbacks import TensorBoard
 from keras.layers import (Embedding, Input, Dense, 
                           Conv1D, MaxPooling1D, Flatten)
-from sklearn.metrics import (f1_score, precision_score, recall_score)
+from sklearn.metrics import (f1_score)
 from sklearn.metrics import (precision_recall_fscore_support)
 import tensorflow as tf
 import pandas as pd
 import numpy as np
 from pipeline_functions import write_csv
 from weightedbinarycrossentropy import WeightedBinaryCrossEntropy
-from model_utils import f1
+from model_utils import f1, Metrics, get_predictions, shuffle_split
 
 # Get environmental vars from systems
 
@@ -262,32 +261,7 @@ tb = TensorBoard(
     write_graph=True, write_images=False
     )
 
-# In[37]:
-
-
-class Metrics(Callback):
-    def on_train_begin(self, logs={}):
-        self.val_f1s = []
-        self.val_recalls = []
-        self.val_precisions = []
- 
-    def on_epoch_end(self, epoch, logs={}):
-        val_predict = (np.asarray(self.model.predict(self.model.validation_data[0]))).round()
-        val_targ = self.model.validation_data[1]
-
-        self.val_f1s.append(f1_score(val_targ, val_predict, average='micro'))
-        self.val_recalls.append(recall_score(val_targ, val_predict))
-        self.val_precisions.append(precision_score(val_targ, val_predict))
-
-        f1 = f1_score(val_targ, val_predict, average='micro')
-        precision = precision_score(val_targ, val_predict),
-        recall = recall_score(val_targ, val_predict)
-
-        logger.info("Metrics: - val_f1: %s — val_precision: %s — val_recall %s", 
-                fi, precision, recall)
-        return
-
-metrics = Metrics()
+metrics = Metrics(logger)
 
 # Train model
 

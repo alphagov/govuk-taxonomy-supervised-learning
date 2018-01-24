@@ -5,7 +5,39 @@ Helper functions for model evaluation
 
 import tensorflow as tf
 import keras.backend as K
+from keras.callbacks import Callback
 import numpy as np
+from sklearn.metrics import (precision_score, recall_score, f1_score)
+
+class Metrics(Callback):
+    """
+    """
+
+    def __init__(self, logger):
+        self.logger = logger
+        self.val_f1s = []
+        self.val_recalls = []
+        self.val_precisions = []
+
+    def on_train_begin(self, logs={}):
+        self.val_f1s = []
+        self.val_recalls = []
+        self.val_precisions = []
+
+    def on_epoch_end(self, epoch, logs={}):
+        val_predict = (np.asarray(self.model.predict(self.model.validation_data[0]))).round()
+        val_targ = self.model.validation_data[1]
+
+        self.val_f1s.append(f1_score(val_targ, val_predict, average='micro'))
+        self.val_recalls.append(recall_score(val_targ, val_predict))
+        self.val_precisions.append(precision_score(val_targ, val_predict))
+
+        f1 = f1_score(val_targ, val_predict, average='micro')
+        precision = precision_score(val_targ, val_predict),
+        recall = recall_score(val_targ, val_predict)
+
+        self.logger.info("Metrics: - val_f1: %s — val_precision: %s — val_recall %s", f1, precision, recall)
+        return
 
 def shuffle_split(data, labels, logger, seed=0, split={ "train": 0.8, "dev" : 0.1, "test": 0.1}):
     """
