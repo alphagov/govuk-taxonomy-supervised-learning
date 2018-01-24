@@ -104,9 +104,7 @@ content = pd.merge(
 
 content.loc[content['_merge'] == 'left_only', 'document_type_gp'] = 'other'
 content.drop('_merge', axis=1, inplace=True)
-# Text body is stored in dictionary in details column of content df
 
-logger.info('Extracting body from body dict')
 
 def is_json(raw_text):
     try:
@@ -152,16 +150,12 @@ def get_text(x):
                     total_text += " " + str_from_html
     return total_text.strip()
 
-content['body']= content['details'].map(get_text)
-
-logger.debug('Printing top 10 from content.body: %s.', content.body[0:10])
-
 # Clean the html
 
 logger.info('Extracting title, description, and text from content.')
 
-logger.debug('Extracting text from body')
-content = content.assign(body = content['body'].apply(extract_text))
+logger.debug('Extracting text from nested json tags')
+content['body'] = content['details'].map(get_text)
 logger.debug('Text extracted from body looks like: %s', content['body'][0:10])
 
 logger.debug('Extracting text from description')
