@@ -37,7 +37,6 @@ class WeightedBinaryCrossEntropy(object):
         return K.mean(cost * self.pos_ratio, axis=-1)
 
 
-
 def get_predictions(new_texts, df, model, labels_index, tokenizer, logger, max_sequence_length, p_threshold=0.5, level1taxon=False):
     """
     Process data for model input
@@ -88,7 +87,9 @@ def get_predictions(new_texts, df, model, labels_index, tokenizer, logger, max_s
 
     # Get the info about the content
     if level1taxon:
-        new_info = df[subset.append()]
+        new_info = df[subset.append('level1taxon')]
+    else:
+        new_info = df[subset]
 
     # Merge content info with taxon prediction
 
@@ -107,6 +108,7 @@ def get_predictions(new_texts, df, model, labels_index, tokenizer, logger, max_s
     # Only return rows/samples where probability is hihger than threshold
 
     return pred_new.loc[pred_new['probability'] > p_threshold]
+
 
 class Metrics(Callback):
     """
@@ -138,19 +140,16 @@ class Metrics(Callback):
         self.logger.info("Metrics: - val_f1: %s — val_precision: %s — val_recall %s", f1, precision, recall)
         return
 
+
 def shuffle_split(data, labels, logger, seed=0, split={ "train": 0.8, "dev" : 0.1, "test": 0.1}):
     """
     Perform three way split of the data:
-
-    * Training
-    * Development
-    * Test
 
     :param data: <np.array> input data
     :param labels: <list> target classes for classification
     :param logger: <logging.getLogger> Logging object
     :param seed: <int> random seed
-    :param split: <dict> A list of len(split)=3 describing train/dev/test
+    :param split: <dict> A dict of len(split)=3 describing train/dev/test
     splits.
     """
 
@@ -186,25 +185,6 @@ def shuffle_split(data, labels, logger, seed=0, split={ "train": 0.8, "dev" : 0.
 
     return x_train, y_train, x_dev, y_dev, x_test, y_test
 
-def mcor(y_true, y_pred):
-    """
-    Matthews' correlation
-    """
-    y_pred_pos = K.round(K.clip(y_pred, 0, 1))
-    y_pred_neg = 1 - y_pred_pos
-
-    y_pos = K.round(K.clip(y_true, 0, 1))
-    y_neg = 1 - y_pos
-
-    tp = K.sum(y_pos * y_pred_pos)
-    tn = K.sum(y_neg * y_pred_neg)
-    fp = K.sum(y_neg * y_pred_pos)
-    fn = K.sum(y_pos * y_pred_neg)
-
-    numerator = (tp * tn - fp * fn)
-    denominator = K.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-
-    return numerator / (denominator + K.epsilon())
 
 def f1(y_true, y_pred):
     """

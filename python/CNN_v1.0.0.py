@@ -14,10 +14,9 @@ from keras.models import Model
 from keras.callbacks import TensorBoard
 from keras.layers import (Embedding, Input, Dense, 
                           Conv1D, MaxPooling1D, Flatten)
-from sklearn.metrics import (f1_score)
-from sklearn.metrics import (precision_recall_fscore_support)
+from sklearn.metrics import (f1_score, recall_score, precision_score, 
+	precision_recall_fscore_support)
 import pandas as pd
-import numpy as np
 from pipeline_functions import write_csv
 from weightedbinarycrossentropy import WeightedBinaryCrossEntropy
 from utils import f1, Metrics, get_predictions, shuffle_split
@@ -39,6 +38,7 @@ EPOCHS = int(os.environ.get('EPOCHS'))
 BATCH_SIZE = int(os.environ.get('BATCH_SIZE'))
 
 PREDICTION_PROBA = float(os.environ.get('PREDICTION_PROBA'))
+
 # Set up logging
 
 logging.config.fileConfig(LOGGING_CONFIG)
@@ -204,27 +204,17 @@ embedding_layer = Embedding(
 # Define model architecture
 
 NB_CLASSES = y_train.shape[1]
-sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32') #MAX_SEQUENCE_LENGTH
+sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32') 
 embedded_sequences = embedding_layer(sequence_input)
-
 x = Conv1D(128, 5, activation='relu', name = 'conv0')(embedded_sequences)
-
 x = MaxPooling1D(5, name = 'max_pool0')(x)
-
 x = Conv1D(128, 5, activation='relu', name = 'conv1')(x)
-
 x = MaxPooling1D(5 , name = 'max_pool1')(x)
-
 x = Conv1D(128, 5, activation='relu', name = 'conv2')(x)
-
-x = MaxPooling1D(35, name = 'global_max_pool')(x)  # global max pooling
-
-x = Flatten()(x) #reduce dimensions from 3 to 2; convert to vector + FULLYCONNECTED
-
+x = MaxPooling1D(35, name = 'global_max_pool')(x)
+x = Flatten()(x) # Reduce dimensions from 3 to 2
 x = Dense(128, activation='relu')(x)
-
 x = Dense(NB_CLASSES, activation='sigmoid', name = 'fully_connected')(x)
-
 model = Model(sequence_input, x)
 
 logger.info('Model sequence input:\n%s', sequence_input)
@@ -259,15 +249,9 @@ metrics = Metrics(logger)
 
 model.fit(
     x_train, y_train, 
-    validation_data=(x_val, y_val), 
-<<<<<<< HEAD
+    validation_data=(x_dev, y_dev),
     epochs=EPOCHS, batch_size=BATCH_SIZE
-=======
-    epochs=10, batch_size=128
->>>>>>> ba9fc2b... Add logging and tidy comments
 )
-
-# Evaluate model
 
 # Training metrics
 
@@ -276,8 +260,8 @@ y_prob = model.predict(x_train)
 logger.debug(y_prob.shape)
 
 y_pred = y_prob.copy()
-y_pred[y_pred>P_THRESHOLD] = 1
-y_pred[y_pred<P_THRESHOLD] = 0
+y_pred[y_pred > P_THRESHOLD] = 1
+y_pred[y_pred < P_THRESHOLD] = 0
 
 logger.info('TRAINING F1 (micro):\n\n%s', f1_score(y_train, y_pred, average='micro'))
 
@@ -287,7 +271,7 @@ logger.debug('TRAINING F1 (for each class):\n\n%s,', precision_recall_fscore_sup
 
 # Validation metrics
 
-y_pred_val = model.predict(x_val)
+y_pred_dev = model.predict(x_dev)
 
 # Use P_THRESHOLD to choose predicted class
 
@@ -303,77 +287,23 @@ logger.debug('DEVELOPMENT F1 (for each class):\n\n%s,'precision_recall_fscore_su
 
 logger.info('DEVELOPMENT F1 (micro): %s', precision_recall_fscore_support(y_val, y_pred_val, average='micro', sample_weight=None))
 
-# ## Tag unlabelled content
-
-def get_predictions(new_texts, df, level1taxon=False):
-    """
-    Process data for model input
-    """
-    # Yield one sequence per input tex
-    new_sequences = tokenizer.texts_to_sequences(new_texts)
-
-    new_word_index = tokenizer.word_index
-    logger.debug('Found %s unique tokens.', len(new_word_index))
-
-    x_new = pad_sequences(new_sequences, maxlen=MAX_SEQUENCE_LENGTH)
-
-    logger.debug('Shape of untagged tensor: %s', x_new.shape)
-
-    # predict tag for untagged data
-
-    y_pred_new = model.predict(x_new)
-
-    # Get model output into pandas & get a column to track index for later
-    # merge
-
-    y_pred_new = pd.DataFrame(y_pred_new)
-    y_pred_new['index_col'] = y_pred_new.index
-
-    # Make long by taxon so easier to filter rows and examine effect of 
-    #p_threshold
-    
-    y_pred_new = pd.melt(y_pred_new, id_vars=['index_col'],
-                         var_name='level2taxon_code', value_name='probability')
-
-    # Get taxon names
-    y_pred_new['level2taxon'] = y_pred_new['level2taxon_code'].map(labels_index)
-
-    # Get the info about the content
-    if level1taxon==False:
-        # Get the info about the content
-        new_info = df[['base_path', 'content_id', 'title', 'description', 
-                       'document_type', 'publishing_app', 'locale']]
-    else:
-        new_info = df[['base_path', 'content_id', 'title', 'description', 
-                       'document_type', 'publishing_app', 'locale', 'level1taxon']]
-
-    # Merge content info with taxon prediction
-    
-    pred_new = pd.merge(
-                        left=new_info,
-                        right=y_pred_new,
-                        left_index=True,
-                        right_on='index_col',
-                        how='outer'
-                       )
-
-    # Drop the cols needed for mergingin and naming
-    
-    pred_new.drop(['index_col'], axis=1, inplace=True)
-
-    # Only return rows/samples where probability is hihger than threshold
-
-    return pred_new.loc[pred_new['probability'] > P_THRESHOLD]
-
-# Untagged
-
-# Read in untagged content
+# Tag unlabelled content
 
 untagged_raw = pd.read_csv(os.path.join(DATADIR, 'untagged_content.csv.gz'), dtype=object, compression='gzip')
 
 new_texts = untagged_raw['combined_text']
 
-pred_untagged = get_predictions(new_texts, untagged_raw)
+pred_untagged = get_predictions(
+    new_texts=new_texts,
+    df=untagged_raw,
+    model=model,
+    labels_index=labels_index,
+    tokenizer=tokenizer,
+    logger=logger,
+    max_sequence_length=MAX_SEQUENCE_LENGTH,
+    p_threshold=P_THRESHOLD,
+    level1taxon=False
+    )
 
 logger.debug('Number of unique content items: %s', pred_untagged.content_id.nunique())
 logger.debug('Number of content items tagged to taxons with more than p_threshold: %s', pred_untagged.shape)
@@ -388,11 +318,21 @@ write_csv(
     logger, compression='gzip'
     )
 
-# Apply tokenizer to our text data
+# Apply tokenizer to new text data
 
-tokenizer.fit_on_texts(new_texts)
+new_text_tokenizer = tokenizer.fit_on_texts(new_texts)
 
-pred_untagged_refit_tok = get_predictions(new_texts, untagged_raw)
+pred_untagged = get_predictions(
+    new_texts=new_texts,
+    df=untagged_raw,
+    model=model,
+    labels_index=labels_index,
+    tokenizer=new_text_tokenizer,
+    logger=logger,
+    max_sequence_length=MAX_SEQUENCE_LENGTH,
+    p_threshold=P_THRESHOLD,
+    level1taxon=False
+    )
 
 # write to csv
 
@@ -404,7 +344,7 @@ write_csv(
 
 # New data (untagged + old taxons)
 
-# old_taxons data has no combined text. This needs fixing in the data 
+# Old_taxons data has no combined text. This needs fixing in the data 
 # pipeline before being able to use these data for predictions.
 
 #read in untagged content
@@ -417,10 +357,19 @@ logger.debug(type(new_raw['combined_text'][0]))
 logger.debug(len(new_raw[new_raw['combined_text'].isna()]))
 logger.debug((new_raw.loc[(new_raw['combined_text'].isna()) & (new_raw['untagged_type'] != 'untagged')]).shape)
 
-# Make a copy so you can edit data without needed to read in each time
-
 new_df = new_raw.copy()
-pred_new = get_predictions(new_df)
+
+pred_new = get_predictions(
+    new_texts=new_df,
+    df=untagged_raw,
+    model=model,
+    labels_index=labels_index,
+    tokenizer=new_text_tokenizer,
+    logger=logger,
+    max_sequence_length=MAX_SEQUENCE_LENGTH,
+    p_threshold=P_THRESHOLD,
+    level1taxon=False
+    )
 
 # Keep only rows where prob of taxon is greater than threshold
 
@@ -440,11 +389,20 @@ labelled_level1 = pd.read_csv(os.path.join(DATADIR, 'labelled_level1.csv.gz'), d
 
 level1_texts = labelled_level1['combined_text']
 
-# Reset tokenizer to training data texts
-
 tokenizer.fit_on_texts(texts)
 
-pred_labelled_level1 = get_predictions(level1_texts, labelled_level1, level1taxon=True)
+pred_new = get_predictions(
+    new_texts=level1_texts,
+    df=labelled_level1,
+    model=model,
+    labels_index=labels_index,
+    tokenizer=tokenizer, # Use original tokenizer
+    logger=logger,
+    max_sequence_length=MAX_SEQUENCE_LENGTH,
+    p_threshold=P_THRESHOLD,
+    level1taxon=True
+    )
+
 pred_labelled_level1.sort_values(by='probability', ascending=False)
 
 # Write to csv
