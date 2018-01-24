@@ -21,7 +21,8 @@ import tensorflow as tf
 import pandas as pd
 import numpy as np
 from pipeline_functions import write_csv
-from model_utils import WeightedBinaryCrossEntropy
+from weightedbinarycrossentropy import WeightedBinaryCrossEntropy
+from model_utils import f1
 
 # Get environmental vars from systems
 
@@ -188,49 +189,12 @@ data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
 logger.debug('Shape of label tensor: %s', binary_multilabel.shape)
 logger.debug('Shape of data tensor: %s', data.shape)
 
-"""
-Data split
-
-Training data = 80%
-validation data = 10%
-Test data = 10%
-"""
+indices = np.arange(data.shape[0])
+labels = binary_multilabel[indices]
 
 # Shuffle data and standardise indices
 
-indices = np.arange(data.shape[0])
-np.random.seed(0)
-np.random.shuffle(indices)
-
-data = data[indices]
-labels = binary_multilabel[indices]
-
-nb_test_samples = int(0.1 * data.shape[0])
-nb_val_samples = int(0.2 * data.shape[0])
-nb_training_samples = int(0.8 * data.shape[0])
-
-logger.debug('nb_test samples: %s', nb_test_samples)
-logger.debug('nb_val samples: %s', nb_val_samples)
-logger.debug('nb_training samples: %s', nb_training_samples)
-
-x_train = data[:-nb_val_samples]
-y_train = labels[:-nb_val_samples]
-
-x_val = data[-nb_val_samples:-nb_test_samples]
-y_val = labels[-nb_val_samples:-nb_test_samples]
-
-x_test = data[-nb_test_samples:]
-y_test = labels[-nb_test_samples:]
-
-logger.info('Shape of x_train: %s', x_train.shape)
-logger.info('Shape of y_train: %s', y_train.shape)
-logger.info('Shape of x_val: %s', x_val.shape)
-logger.info('Shape of y_val: %s', y_val.shape)
-logger.info('Shape of x_val: %s', x_val.shape)
-logger.info('Shape of y_val: %s', y_val.shape)
-
-# Check these are different arrays!
-np.array_equal(y_val, y_test)
+x_train, y_train, x_dev, y_dev, x_test, y_test = shuffle_split(data, labels, logger, seed=0, split={ "train": 0.8, "dev" : 0.1, "test": 0.1})
 
 # Prepare embedding layer
 
