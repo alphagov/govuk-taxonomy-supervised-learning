@@ -5,9 +5,108 @@ Helper functions for model evaluation
 
 import tensorflow as tf
 import keras.backend as K
+from keras.preprocessing.sequence import pad_sequences
 from keras.callbacks import Callback
 import numpy as np
 from sklearn.metrics import (precision_score, recall_score, f1_score)
+
+
+class WeightedBinaryCrossEntropy(object):
+    """
+    Weighted Binary Cross Entropy
+    """
+
+    def __init__(self, pos_ratio):
+        neg_ratio = 1. - pos_ratio
+        # self.pos_ratio = tf.constant(pos_ratio, tf.float32)
+        self.pos_ratio = pos_ratio
+        # self.weights = tf.constant(neg_ratio / pos_ratio, tf.float32)
+        self.weights = neg_ratio / pos_ratio
+        self.__name__ = "weighted_binary_crossentropy({0})".format(pos_ratio)
+
+    def __call__(self, y_true, y_pred):
+        return self.weighted_binary_crossentropy(y_true, y_pred)
+
+    def weighted_binary_crossentropy(self, y_true, y_pred):
+        # Transform to logits
+        epsilon = tf.convert_to_tensor(K.common._EPSILON, y_pred.dtype.base_dtype)
+        y_pred = tf.clip_by_value(y_pred, epsilon, 1 - epsilon)
+        y_pred = tf.log(y_pred / (1 - y_pred))
+
+        cost = tf.nn.weighted_cross_entropy_with_logits(y_true, y_pred, self.weights)
+        return K.mean(cost * self.pos_ratio, axis=-1)
+
+
+
+def get_predictions(new_texts, df, model, labels_index, tokenizer, logger, max_sequence_length, p_threshold=0.5, level1taxon=False):
+    """
+    Process data for model input
+
+    :param new_texts: <pd.DataFrame> New texts to be labelled
+    :param df: <pd.DataFrame>
+    :param model: Keras model object
+    :param labels_index: <dict> Mapping of taxon code to string label
+    :param tokenizer: <keras.preprocessing.test.Tokenizer> tokenizer object
+    to be used for tokenization
+    :param max_sequence_length: <int> Passed from env var MAX_SEQUENCE_LENGTH
+    :param logger: <logging.getLogger()> Logging object
+    :param p_threshold: <float> Passed from env var P_THRESHOLD
+    :param level1taxon: <bool> Are you classifying level1taxons?
+    """
+    # Yield one sequence per input text
+
+    new_sequences = tokenizer.texts_to_sequences(new_texts)
+    new_word_index = tokenizer.word_index
+
+    logger.debug('Found %s unique tokens.', len(new_word_index))
+
+    x_new = pad_sequences(new_sequences, maxlen=max_sequence_length)
+
+    logger.debug('Shape of untagged tensor: %s', x_new.shape)
+
+    # predict tag for untagged data
+
+    y_pred_new = model.predict(x_new)
+
+    # Get model output into pandas & get a column to track index for later
+    # merge
+
+    y_pred_new = pd.DataFrame(y_pred_new)
+    y_pred_new['index_col'] = y_pred_new.index
+
+    # Make long by taxon so easier to filter rows and examine effect of
+    #p_threshold
+
+    y_pred_new = pd.melt(y_pred_new, id_vars=['index_col'],
+                         var_name='level2taxon_code', value_name='probability')
+
+    # Get taxon names
+    y_pred_new['level2taxon'] = y_pred_new['level2taxon_code'].map(labels_index)
+
+    subset = ['base_path', 'content_id', 'title', 'description',
+              'document_type', 'publishing_app', 'locale']
+
+    # Get the info about the content
+    if level1taxon:
+        new_info = df[subset.append()]
+
+    # Merge content info with taxon prediction
+
+    pred_new = pd.merge(
+        left=new_info,
+        right=y_pred_new,
+        left_index=True,
+        right_on='index_col',
+        how='outer'
+        )
+
+    # Drop the cols needed for mergingin and naming
+
+    pred_new.drop(['index_col'], axis=1, inplace=True)
+
+    # Only return rows/samples where probability is hihger than threshold
+
+    return pred_new.loc[pred_new['probability'] > p_threshold]
 
 class Metrics(Callback):
     """

@@ -16,12 +16,11 @@ from keras.layers import (Embedding, Input, Dense,
                           Conv1D, MaxPooling1D, Flatten)
 from sklearn.metrics import (f1_score)
 from sklearn.metrics import (precision_recall_fscore_support)
-import tensorflow as tf
 import pandas as pd
 import numpy as np
 from pipeline_functions import write_csv
 from weightedbinarycrossentropy import WeightedBinaryCrossEntropy
-from model_utils import f1, Metrics, get_predictions, shuffle_split
+from utils import f1, Metrics, get_predictions, shuffle_split
 
 # Get environmental vars from systems
 
@@ -202,18 +201,6 @@ embedding_layer = Embedding(
     input_length=MAX_SEQUENCE_LENGTH
     )
 
-# ### Custom loss function
-
-
-y_true_arr = np.array([0,1,0,1], dtype="float32")
-y_pred_arr = np.array([0,0,1,1], dtype="float32")
-y_true = tf.constant(y_true_arr)
-y_pred = tf.constant(y_pred_arr)
-
-with tf.Session().as_default():
-    logger.debug(WeightedBinaryCrossEntropy(0.5)(y_true, y_pred).eval())
-    logger.debug(binary_crossentropy(y_true, y_pred).eval())
-
 # Define model architecture
 
 NB_CLASSES = y_train.shape[1]
@@ -260,6 +247,8 @@ tb = TensorBoard(
     log_dir='./learn_embedding_logs', histogram_freq=1,
     write_graph=True, write_images=False
     )
+
+# Metrics is now defined in utils
 
 metrics = Metrics(logger)
 

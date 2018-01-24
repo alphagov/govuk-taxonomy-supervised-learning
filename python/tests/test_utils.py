@@ -1,11 +1,32 @@
-""" Tests for functions in clean_taxons.py and clean_content.py
+""" Tests for utility functions
 """
 # coding: utf-8
 
 import logging
-import pandas as pd
+import keras
+from keras.losses import binary_crossentropy
 import numpy as np
-from model_utils import shuffle_split
+import tensorflow as tf
+from utils import shuffle_split, WeightedBinaryCrossEntropy
+
+class TestModelUtils(object):
+
+
+    def test_weightedbinarycrossentropy(self):
+        """
+        Test for the write_csv function
+        """
+
+        y_true_arr = np.array([0, 1, 0, 1], dtype="float32")
+        y_pred_arr = np.array([0, 0, 1, 1], dtype="float32")
+        y_true = tf.constant(y_true_arr)
+        y_pred = tf.constant(y_pred_arr)
+
+        with tf.Session().as_default():
+            wcbe_val = WeightedBinaryCrossEntropy(0.5)(y_true, y_pred).eval()
+            bc_val = binary_crossentropy(y_true, y_pred).eval()
+
+        assert wcbe_val < bc_val
 
 class TestModelUtils(object):
 
