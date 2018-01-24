@@ -284,60 +284,6 @@ with tf.Session().as_default():
     logger.debug(WeightedBinaryCrossEntropy(0.5)(y_true, y_pred).eval())
     logger.debug(binary_crossentropy(y_true, y_pred).eval())
 
-"""
-Difficulty getting global precision/recall metrics
-
-CAUTION interpreting monitoring metrics
-
-On this, Francois Chollet (author of Keras) says:
-
-"Basically these are all global metrics that were approximated
-batch-wise, which is more misleading than helpful. This was mentioned in
-the docs but it's much cleaner to remove them altogether. It was a mistake
-to merge them in the first place."
-
-"""
-
-def mcor(y_true, y_pred):
-     #matthews_correlation
-    y_pred_pos = K.round(K.clip(y_pred, 0, 1))
-    y_pred_neg = 1 - y_pred_pos
-
-    y_pos = K.round(K.clip(y_true, 0, 1))
-    y_neg = 1 - y_pos
-
-    tp = K.sum(y_pos * y_pred_pos)
-    tn = K.sum(y_neg * y_pred_neg)
-    fp = K.sum(y_neg * y_pred_pos)
-    fn = K.sum(y_pos * y_pred_neg)
-
-    numerator = (tp * tn - fp * fn)
-    denominator = K.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-
-    return numerator / (denominator + K.epsilon())
-
-# NOTE MU: Version v1.0.0 originally had a very slow implementation of 
-# precision and recall and f1. I have replaced it here with this much 
-# quicker implementation which comes from v1.2.0, which will not affect
-# the model outcomes.
-
-def f1(y_true, y_pred):
-    """Use Recall and precision metrics to calculate harmonic mean (f1)
-
-        Only computes a batch-wise average of recall.
-
-        Computes the recall, a metric for multi-label classification of
-        how many relevant items are selected.
-        """
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
-    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-    precision = true_positives / (predicted_positives + K.epsilon())
-    recall = true_positives / (possible_positives + K.epsilon())
-    f1 = 2*((precision*recall)/(precision+recall))
-
-    return f1
-
 # Define model architecture
 
 NB_CLASSES = y_train.shape[1]
