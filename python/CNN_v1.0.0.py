@@ -54,37 +54,40 @@ from sklearn.utils import class_weight
 
 import tensorflow as tf
 
-import matplotlib.pyplot as plt
-get_ipython().magic(u'matplotlib inline')
+# Get environmental vars from systems
 
-import functools
+LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
+DATADIR = os.getenv('DATADIR')
 
+# Model hyperparameters
 
-# ### Environmental vars
+MAX_SEQUENCE_LENGTH = int(os.environ.get('MAX_SEQUENCE_LENGTH'))
+EMBEDDING_DIM = int(os.environ.get('EMBEDDING_DIM'))
+P_THRESHOLD = float(os.environ.get('P_THRESHOLD'))
+POS_RATIO = float(os.environ.get('POS_RATIO'))
+NUM_WORDS = int(os.environ.get('NUM_WORDS'))
+EPOCHS = int(os.environ.get('EPOCHS'))
+BATCH_SIZE = int(os.environ.get('BATCH_SIZE'))
 
-# In[86]:
+PREDICTION_PROBA = float(os.environ.get('PREDICTION_PROBA'))
 
+# Hyperparameters
 
-DATADIR=os.getenv('DATADIR')
+"""
+Intuition for POS_RATIO is that it penalises the prediction of zero for
+everything, which is attractive to the model because the multilabel y
+matrix is super sparse.
 
+Increasing POS_RATIO should penalise predicting zeros more.
 
-# ## Hyperparameters
-
-# Intuition for POS_RATIO is that it penalises the prediction of zero for everything, which is attractive to the model because the multilabel y matrix is super sparse. 
-# 
-# Increasing POS_RATIO should penalise predicting zeros more.
-
-# In[105]:
-
-
-#MAX_NB_WORDS
-MAX_SEQUENCE_LENGTH =1000
-EMBEDDING_DIM = 100 # keras embedding layer output_dim = Dimension of the dense embedding
-P_THRESHOLD = 0.5 #Threshold for probability of being assigned to class
-POS_RATIO = 0.5 #ratio of positive to negative for each class in weighted binary cross entropy loss function
-NUM_WORDS=20000 #keras tokenizer num_words: None or int. Maximum number of words to work with 
-#(if set, tokenization will be restricted to the top num_words most common words in the dataset).
-
+EMBEDDING_DIM: Keras embedding layer output_dim = Dimension of the dense embedding
+P_THRESHOLD: Threshold for probability of being assigned to class
+POS_RATIO: Ratio of positive to negative for each class in weighted binary
+cross entropy loss function
+NUM_WORDS: Keras tokenizer num_words: None or int. Maximum number of words to
+work with (if set, tokenization will be restricted to the top num_words most
+common words in the dataset).
+"""
 
 # ### Read in data
 # Content items tagged to level 2 taxons or lower in the topic taxonomy
@@ -584,8 +587,7 @@ metrics = Metrics()
 model.fit(
     x_train, y_train, 
     validation_data=(x_val, y_val), 
-    epochs=10, batch_size=128, 
-    callbacks=[tb]
+    epochs=EPOCHS, batch_size=BATCH_SIZE
 )
 
 
