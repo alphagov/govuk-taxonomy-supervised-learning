@@ -116,28 +116,28 @@ class Metrics(Callback):
 
     def __init__(self, logger):
         self.logger = logger
-        self.val_f1s = []
-        self.val_recalls = []
-        self.val_precisions = []
+        self.dev_f1s = []
+        self.dev_recalls = []
+        self.dev_precisions = []
 
     def on_train_begin(self, logs={}):
-        self.val_f1s = []
-        self.val_recalls = []
-        self.val_precisions = []
+        self.dev_f1s = []
+        self.dev_recalls = []
+        self.dev_precisions = []
 
     def on_epoch_end(self, epoch, logs={}):
-        val_predict = (np.asarray(self.model.predict(self.model.validation_data[0]))).round()
-        val_targ = self.model.validation_data[1]
+        dev_predict = (np.asarray(self.model.predict(self.model.validation_data[0]))).round()
+        dev_targ = self.model.validation_data[1]
 
-        self.val_f1s.append(f1_score(val_targ, val_predict, average='micro'))
-        self.val_recalls.append(recall_score(val_targ, val_predict))
-        self.val_precisions.append(precision_score(val_targ, val_predict))
+        self.dev_f1s.append(f1_score(dev_targ, dev_predict, average='micro'))
+        self.dev_recalls.append(recall_score(dev_targ, dev_predict))
+        self.dev_precisions.append(precision_score(dev_targ, dev_predict))
 
-        f1 = f1_score(val_targ, val_predict, average='micro')
-        precision = precision_score(val_targ, val_predict),
-        recall = recall_score(val_targ, val_predict)
+        f1 = f1_score(dev_targ, dev_predict, average='micro')
+        precision = precision_score(dev_targ, dev_predict),
+        recall = recall_score(dev_targ, dev_predict)
 
-        self.logger.info("Metrics: - val_f1: %s — val_precision: %s — val_recall %s", f1, precision, recall)
+        self.logger.info("Metrics: - dev_f1: %s — dev_precision: %s — dev_recall %s", f1, precision, recall)
         return
 
 

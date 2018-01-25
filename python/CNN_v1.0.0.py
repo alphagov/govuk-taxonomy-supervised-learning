@@ -44,6 +44,7 @@ PREDICTION_PROBA = float(os.environ.get('PREDICTION_PROBA'))
 logging.config.fileConfig(LOGGING_CONFIG)
 logger = logging.getLogger('CNN_v1.0.0')
 
+logger.info('')
 logger.info('---- Model hyperparameters ----')
 logger.info('')
 logger.info('MAX_SEQUENCE_LENGTH: %s', MAX_SEQUENCE_LENGTH)
@@ -187,12 +188,15 @@ data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
 logger.debug('Shape of label tensor: %s', binary_multilabel.shape)
 logger.debug('Shape of data tensor: %s', data.shape)
 
+# Create labels for test/dev/train split
+
 indices = np.arange(data.shape[0])
 labels = binary_multilabel[indices]
 
 # Shuffle data and standardise indices
 
 x_train, y_train, x_dev, y_dev, x_test, y_test = shuffle_split(data, labels, logger, seed=0, split={ "train": 0.8, "dev" : 0.1, "test": 0.1})
+
 # Prepare embedding layer
 
 embedding_layer = Embedding(
@@ -231,7 +235,7 @@ model.compile(loss=WeightedBinaryCrossEntropy(POS_RATIO),
 
 logger.debug('Model summary: %s', model.summary())
 
-# Tensorboard callbacks /metrics /monitor training
+# Set tensorboard callback
 
 tb = TensorBoard(
     log_dir='./learn_embedding_logs', histogram_freq=1,
@@ -250,7 +254,8 @@ metrics = Metrics(logger)
 model.fit(
     x_train, y_train, 
     validation_data=(x_dev, y_dev),
-    epochs=EPOCHS, batch_size=BATCH_SIZE
+    epochs=EPOCHS, batch_size=BATCH_SIZE,
+    #callbacks=[tb]
 )
 
 # Training metrics
@@ -275,17 +280,17 @@ y_pred_dev = model.predict(x_dev)
 
 # Use P_THRESHOLD to choose predicted class
 
-y_pred_val[y_pred_val>=P_THRESHOLD] = 1
-y_pred_val[y_pred_val<P_THRESHOLD] = 0
+y_pred_dev[y_pred_dev >= P_THRESHOLD] = 1
+y_pred_dev[y_pred_dev < P_THRESHOLD] = 0
 
 # average= None, the scores for each class are returned.
 
-logger.debug('DEVELOPMENT F1 (for each class):\n\n%s,'precision_recall_fscore_support(y_val, y_pred_val, average=None, sample_weight=None))
+logger.debug('DEVELOPMENT F1 (for each class):\n\n%s,', precision_recall_fscore_support(y_dev, y_pred_dev, average=None, sample_weight=None))
 
 # Calculate globally by counting the total true positives, false negatives 
 # and false positives.
 
-logger.info('DEVELOPMENT F1 (micro): %s', precision_recall_fscore_support(y_val, y_pred_val, average='micro', sample_weight=None))
+logger.info('DEVELOPMENT F1 (micro): %s', precision_recall_fscore_support(y_dev, y_pred_dev, average='micro', sample_weight=None))
 
 # Tag unlabelled content
 
