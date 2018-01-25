@@ -33,7 +33,8 @@
 import pandas as pd
 import numpy as np
 import os
-from datetime import datetime
+import logging
+import logging.config
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 
@@ -69,8 +70,6 @@ NUM_WORDS = int(os.environ.get('NUM_WORDS'))
 EPOCHS = int(os.environ.get('EPOCHS'))
 BATCH_SIZE = int(os.environ.get('BATCH_SIZE'))
 
-PREDICTION_PROBA = float(os.environ.get('PREDICTION_PROBA'))
-
 # Hyperparameters
 
 """
@@ -89,274 +88,231 @@ work with (if set, tokenization will be restricted to the top num_words most
 common words in the dataset).
 """
 
-# ### Read in data
+# Read in data
 # Content items tagged to level 2 taxons or lower in the topic taxonomy
 
-# In[91]:
+labelled_level2 = pd.read_csv(
+    os.path.join(DATADIR, 'labelled_level2.csv.gz'), dtype=object, compression='gzip'
+    )
 
+# Create dictionary mapping taxon codes to string labels
+# Collapse World level2taxons
 
-labelled_level2 = pd.read_csv(os.path.join(DATADIR, 'labelled_level2.csv'), dtype=object)
-
-
-# ### Create dictionary mapping taxon codes to string labels
-
-# In[92]:
-
-
-#COLLAPSE World level2taxons
 labelled_level2.loc[labelled_level2['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
 
-#creating categorical variable for level2taxons from values
+# Creating categorical variable for level2taxons from values
 labelled_level2['level2taxon'] = labelled_level2['level2taxon'].astype('category')
 
-#Get the category numeric values (codes) and avoid zero-indexing
+# Get the category numeric values (codes) and avoid zero-indexing
 labels = labelled_level2['level2taxon'].cat.codes + 1
 
-#create dictionary of taxon category code to string label for use in model evaluation
+# Create dictionary of taxon category code to string label for use in model evaluation
 labels_index = dict(zip((labels), labelled_level2['level2taxon']))
-labels_index
 
+logger.debug('Number of labels extracted from %s: %s.', 
+        'labelled_level2.csv.gz', len(labels_index))
 
-# In[93]:
+# Create target/Y
+"""
+NOTE: when using the categorical_crossentropy loss, your targets should be
+in categorical format (e.g. if you have 10 classes, the target for each
+sample should be a 10-dimensional vector that is all-zeros expect for a 1
+at the index corresponding to the class of the sample).
 
+In multilabel learning, the joint set of binary classification tasks is
+expressed with label binary indicator array: each sample is one row of a
+2d array of shape (n_samples, n_classes) with binary values:
 
-print(len(labels_index))
+* The one, i.e. the non zero elements, corresponds to the subset of labels.
+* An array such as np.array([[1, 0, 0], [0, 1, 1], [0, 0, 0]]) represents
+label 0 in the first sample, labels 1 and 2 in the second sample, and no
+labels in the third sample.
 
+Producing multilabel data as a list of sets of labels may be more intuitive.
+"""
 
-# ### Create target/Y 
+# First reshape wide to get columns for each level2taxon and row
+# number = number unique urls
 
-# Note: when using the categorical_crossentropy loss, your targets should be in categorical format (e.g. if you have 10 classes, the target for each sample should be a 10-dimensional vector that is all-zeros expect for a 1 at the index corresponding to the class of the sample).
+# TODO clarify this comment:  Get a smaller copy of data for pivoting ease
+# (think you can work from full data actually and other cols get droopedauto)
 
-# In multilabel learning, the joint set of binary classification tasks is expressed with label binary indicator array: each sample is one row of a 2d array of shape (n_samples, n_classes) with binary values:  
-# the one, i.e. the non zero elements, corresponds to the subset of labels.  
-# An array such as np.array([[1, 0, 0], [0, 1, 1], [0, 0, 0]]) represents label 0 in the first sample, labels 1 and 2 in the second sample, and no labels in the third sample.  
-# Producing multilabel data as a list of sets of labels may be more intuitive.
+level2_reduced = labelled_level2[['content_id', 'level2taxon', 'combined_text']].copy()
 
-# ####  First reshape wide to get columns for each level2taxon and row number = number unique urls
+# How many level2taxons are there?
 
-# In[94]:
+logger.debug('Number of unique level2 taxons: %s.', level2_reduced.level2taxon.nunique())
 
-
-#get a smaller copy of data for pivoting ease (think you can work from full data actually and other cols get droopedauto)
-
-level2_reduced = labelled_level2[['content_id', 'level2taxon', 'combined_text']].copy(deep=True)
-
-#how many level2taxons are there?
-print('Number of unique level2taxons: {}'.format(level2_reduced.level2taxon.nunique()))
-
-#count the number of taxons per content item into new column
+# Count the number of taxons per content item into new column
 level2_reduced['num_taxon_per_content'] = level2_reduced.groupby(["content_id"])['content_id'].transform("count")
 
-#Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
+# Add 1 because of zero-indexing to get 1-number of level2taxons as
+# numerical targets
+
 level2_reduced['level2taxon_code'] = level2_reduced.level2taxon.astype('category').cat.codes + 1
 
+# Reshape to wide per taxon and keep the combined text so indexing is
+# consistent when splitting X from Y
 
-# In[98]:
+multilabel = (level2_reduced.pivot_table(
+    index=['content_id', 'combined_text'], columns='level2taxon_code',
+    values='num_taxon_per_content')
+             )
 
+logger.debug('Number of unique level2 taxons: %s.', level2_reduced.level2taxon.nunique())
+logger.debug('Level2_reduced shape: %s', level2_reduced.shape)
+logger.debug('Pivot table shape (no duplicates): %s ', multilabel.shape)
 
-#reshape to wide per taxon and keep the combined text so indexing is consistent when splitting X from Y
+"""
+THIS IS WHY INDEXING IS NOT ZERO-BASED
+Convert the number_of_taxons_per_content values to 1, meaning there was an entry
+for this taxon and this content_id, 0 otherwise
 
-multilabel = (level2_reduced.pivot_table(index=['content_id', 'combined_text'], 
-                  columns='level2taxon_code', 
-                  values='num_taxon_per_content'))
-print('level2reduced shape: {}'.format(level2_reduced.shape))
-print('pivot table shape (no duplicates): {} '.format(multilabel.shape))
-
-
-# In[99]:
-
-
-#THIS IS WHY INDEXING IS NOT ZERO-BASED
-#convert the number_of_taxons_per_content values to 1, meaning there was an entry for this taxon and this content_id, 0 otherwise
+"""
 binary_multilabel = multilabel.notnull().astype('int')
 
+# Will convert columns to an array of shape
 
-# In[100]:
+logger.debug('Shape of Y multilabel array before train/val/test split: %s',
+        binary_multilabel[list(binary_multilabel.columns)].values.shape)
 
+# Convert columns to an array. Each row represents a content item, each column
+# an individual taxon
 
-#will convert columns to an array of shape
-print('Shape of Y multilabel array before train/val/test split:{}'.format(binary_multilabel[list(binary_multilabel.columns)].values.shape))
-
-
-# In[101]:
-
-
-#convert columns to an array. Each row represents a content item, each column an individual taxon
 binary_multilabel = binary_multilabel[list(binary_multilabel.columns)].values
-print('Example row of multilabel array {}'.format(binary_multilabel[2]))
 
+logger.debug('Shape of Y multilabel array before train/val/test split: %s',
+             binary_multilabel[list(binary_multilabel.columns)].values.shape)
 
-# In[102]:
+logger.debug('Example row of multilabel array: %s', binary_multilabel[2])
 
+# TODO move to assert
+logger.debug('Type of binary_multilabel: %s', type(binary_multilabel))
 
-type(binary_multilabel)
+"""
+Create language data/X
 
+Format our text samples and labels into tensors that can be fed into
+a neural  network. To do this, we will rely on Keras utilities
+keras.preprocessing.text.Tokenizer and keras.preprocessing.sequence.pad_sequences.
+"""
+# The pivot table has two indices
+logger.debug(multilabel.index.names)
 
-# ### Create language data/X
-
-# format our text samples and labels into tensors that can be fed into a neural network. To do this, we will rely on Keras utilities keras.preprocessing.text.Tokenizer and keras.preprocessing.sequence.pad_sequences.
-
-# In[103]:
-
-
-#the pivot table has two indices
-multilabel.index.names
-
-
-# In[104]:
-
-
-#extract combined text index to array
+# Extract combined text index to array
 texts = multilabel.index.get_level_values('combined_text')
-texts.shape
+logger.debug(texts.shape)
 
+"""
+Tokenizer
 
-# ### Tokenizer
+Tokenizer = Class for vectorizing texts, or/and turning texts into sequences 
+(=list of word indexes, where the word of rank i in the dataset (starting at 1) 
+has index i)
+"""
 
-# Tokenizer = Class for vectorizing texts, or/and turning texts into sequences (=list of word indexes, where the word of rank i in the dataset (starting at 1) has index i)
+"""
+Bag of words method
 
-# In[106]:
+# NUM_WORDS: None or int. Maximum number of words to work with (if set, 
+# tokenization will be restricted to the top num_words most common words in
+# the dataset).
+"""
 
-
-# Bag of words method
-tokenizer = Tokenizer(num_words=NUM_WORDS) #num_words: None or int. Maximum number of words to work with 
-# (if set, tokenization will be restricted to the top num_words most common words in the dataset).
+tokenizer = Tokenizer(num_words=NUM_WORDS) 
 
 # apply tokenizer to our text data
+
 tokenizer.fit_on_texts(texts)
 
-# list of word indexes, where the word of rank i in the dataset (starting at 1) has index i
-sequences = tokenizer.texts_to_sequences(texts) #yield one sequence per input text
+"""
+List of word indexes, where the word of rank i in the dataset (starting at 1)
+has index i
+"""
+
+sequences = tokenizer.texts_to_sequences(texts)
 
 # dictionary mapping words (str) to their rank/index (int).
-word_index = tokenizer.word_index  # Only set after fit_on_texts was called.
-print('Found %s unique tokens.' % len(word_index))
+# Only set after fit_on_texts was called.
+word_index = tokenizer.word_index
 
-data = pad_sequences(sequences, maxlen= MAX_SEQUENCE_LENGTH) #MAX_SEQUENCE_LENGTH
+logger.debug('Found %s unique tokens', len(word_index))
 
+data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
 
-# In[107]:
+logger.debug('Shape of label tensor: %s', binary_multilabel.shape)
+logger.debug('Shape of data tensor: %s', data.shape)
 
+"""
+Data split
 
-print('Shape of label tensor:', binary_multilabel.shape)
-print('Shape of data tensor:', data.shape)
+Training data = 80%
+validation data = 10%
+Test data = 10%
+"""
 
+# Shuffle data and standardise indices
 
-# ### Data split
-# - Training data = 80%
-# - validation data = 10%
-# - Test data = 10%
-
-# In[19]:
-
-
-# shuffle data and standardise indices
 indices = np.arange(data.shape[0])
 np.random.seed(0)
 np.random.shuffle(indices)
 
-
-# In[20]:
-
-
 data = data[indices]
 labels = binary_multilabel[indices]
 
+# NOTE The below separation is random selection WITH replacement
+# so some of the test data will be in the training set!
 
-# In[21]:
+nb_test_samples = int(0.1 * data.shape[0])
+nb_val_samples = int(0.2 * data.shape[0])
+nb_training_samples = int(0.8 * data.shape[0])
 
-
-nb_test_samples = int(0.1 * data.shape[0]) #validation split
-print('nb_test samples:', nb_test_samples)
-
-nb_val_samples = int(0.2 * data.shape[0]) #validation split
-print('nb_val samples:', nb_val_samples)
-
-nb_training_samples = int(0.8 * data.shape[0]) #validation split
-print('nb_training samples:', nb_training_samples)
-
-
-# In[22]:
-
+logger.debug('nb_test samples: %s', nb_test_samples)
+logger.debug('nb_val samples: %s', nb_val_samples)
+logger.debug('nb_training samples: %s', nb_training_samples)
 
 x_train = data[:-nb_val_samples]
-print('Shape of x_train:', x_train.shape)
 y_train = labels[:-nb_val_samples]
-print('Shape of y_train:', y_train.shape)
 
 x_val = data[-nb_val_samples:-nb_test_samples]
-print('Shape of x_val:', x_val.shape)
 y_val = labels[-nb_val_samples:-nb_test_samples]
-print('Shape of y_val:', y_val.shape)
 
 x_test = data[-nb_test_samples:]
-print('Shape of x_val:', x_val.shape)
 y_test = labels[-nb_test_samples:]
-print('Shape of y_val:', y_val.shape)
 
+logger.debug('Shape of x_train: %s', x_train.shape)
+logger.debug('Shape of y_train: %s', y_train.shape)
+logger.debug('Shape of x_val: %s', x_val.shape)
+logger.debug('Shape of y_val: %s', y_val.shape)
+logger.debug('Shape of x_val: %s', x_val.shape)
+logger.debug('Shape of y_val: %s', y_val.shape)
 
-# In[23]:
-
-
-#check these are differnt arrays!
+# Check these are different arrays!
 np.array_equal(y_val, y_test)
 
+"""
+Preparing the Embedding layer
 
-# ### preparing the Embedding layer
-# 
-# NB stopwords haven't been removed yet...
+An Embedding layer should be fed sequences of integers, i.e. a 2D input of shape (samples, indices). These input sequences should be padded so that they all have the same length in a batch of input data (although an Embedding layer is capable of processing sequence of heterogenous length, if you don't pass an explicit input_length argument to the layer).
+ 
+ All that the Embedding layer does is to map the integer inputs to the vectors found at the corresponding index in the embedding matrix, i.e. the sequence [1, 2] would be converted to [embeddings[1], embeddings[2]]. This means that the output of the Embedding layer will be a 3D tensor of shape (samples, sequence_length, embedding_dim).
+"""
 
-# In[25]:
-
+# NOTE Stopwords haven't been removed yet...
 
 embedding_layer = Embedding(len(word_index) + 1, 
                             EMBEDDING_DIM, 
                             input_length=MAX_SEQUENCE_LENGTH)
 
-
-# An Embedding layer should be fed sequences of integers, i.e. a 2D input of shape (samples, indices). These input sequences should be padded so that they all have the same length in a batch of input data (although an Embedding layer is capable of processing sequence of heterogenous length, if you don't pass an explicit input_length argument to the layer).
-# 
-# All that the Embedding layer does is to map the integer inputs to the vectors found at the corresponding index in the embedding matrix, i.e. the sequence [1, 2] would be converted to [embeddings[1], embeddings[2]]. This means that the output of the Embedding layer will be a 3D tensor of shape (samples, sequence_length, embedding_dim).
-
-# ### Estimate class weights for unbalanced datasets.
-# paramter to model.fit = __class_weight__: Optional dictionary mapping class indices (integers) to a weight (float) value, used for weighting the loss function (during training only). This can be useful to tell the model to "pay more attention" to samples from an under-represented class.
-# 
-# Implement class_weight from sklearn:
-# 
-# - Import the module 
-# 
-# `from sklearn.utils import class_weight`
-# - calculate the class weight, If ‘balanced’, class weights will be given by n_samples / (n_classes * np.bincount(y)):
-# 
-# `class_weight = class_weight.compute_class_weight('balanced', np.unique(y_train), y_train)`
-# 
-# - change it to a dict in order to work with Keras.
-# 
-# `class_weight_dict = dict(enumerate(class_weight))`
-# 
-# - Add to model fitting
-# 
-# `model.fit(X_train, y_train, class_weight=class_weight)`
-
-# In[26]:
-
-
-# class_weight = class_weight.compute_class_weight('balanced', np.unique(y_train), y_train)
-# class_weight_dict = dict(enumerate(class_weight))
-
-
 # ### Custom loss function
-
-# In[27]:
-
 
 class WeightedBinaryCrossEntropy(object):
 
     def __init__(self, pos_ratio):
         neg_ratio = 1. - pos_ratio
-        #self.pos_ratio = tf.constant(pos_ratio, tf.float32)
+        # self.pos_ratio = tf.constant(pos_ratio, tf.float32)
         self.pos_ratio = pos_ratio
-        #self.weights = tf.constant(neg_ratio / pos_ratio, tf.float32)
+        # self.weights = tf.constant(neg_ratio / pos_ratio, tf.float32)
         self.weights = neg_ratio / pos_ratio
         self.__name__ = "weighted_binary_crossentropy({0})".format(pos_ratio)
 
@@ -501,55 +457,52 @@ x = Dense(128, activation='relu')(x)
 
 x = Dense(NB_CLASSES, activation='sigmoid', name = 'fully_connected')(x)
 
-# # The Model class turns an input tensor and output tensor into a model
-# This creates Keras model instance, will use this instance to train/test the model.
 model = Model(sequence_input, x)
-
-
-# In[30]:
-
 
 sequence_input
 
-
-# ### 2. Compile model
-
-# In[31]:
-
+# Compile model
+# Note that the model only reports f1 here at present (which is a departure from
+# the v1.0.0. notebook.
 
 model.compile(loss=WeightedBinaryCrossEntropy(POS_RATIO),
               optimizer='rmsprop',
-              metrics=['binary_accuracy', precision, recall, f1])
+              metrics=['binary_accuracy', f1])
 
 
-# Metric values are recorded at the end of each epoch on the training dataset. If a validation dataset is also provided, then the metric recorded is also calculated for the validation dataset.
-# 
-# All metrics are reported in verbose output and in the history object returned from calling the fit() function. In both cases, the name of the metric function is used as the key for the metric values. In the case of metrics for the validation dataset, the “val_” prefix is added to the key.
 
-# You have now built a function to describe your model. To train and test this model, there are four steps in Keras:
-# 1. Create the model by calling the function above
-# 2. Compile the model by calling `model.compile(optimizer = "...", loss = "...", metrics = ["accuracy"])`
-# 3. Train the model on train data by calling `model.fit(x = ..., y = ..., epochs = ..., batch_size = ...)`
-# 4. Test the model on test data by calling `model.evaluate(x = ..., y = ...)`
-# 
-# If you want to know more about `model.compile()`, `model.fit()`, `model.evaluate()` and their arguments, refer to the official [Keras documentation](https://keras.io/models/model/).
-# 
+logger.debug(model.summary())
 
-# In[32]:
+"""
+Metric values are recorded at the end of each epoch on the training dataset.
+If a validation dataset is also provided, then the metric recorded is also
+calculated for the validation dataset.
+
+All metrics are reported in verbose output and in the history object returned
+from calling the fit() function. In both cases, the name of the metric
+function is used as the key for the metric values. In the case of metrics
+for the validation dataset, the “val_” prefix is added to the key.
+
+You have now built a function to describe your model. To train and test this
+model, there are four steps in Keras:
+
+1. Create the model by calling the function above
+2. Compile the model by calling `model.compile(...)`
+3. Train the model on train data by calling `model.fit(...)`
+4. Test the model on test data by calling `model.evaluate(x = ..., y = ...)`
+
+If you want to know more about `model.compile()`, `model.fit()`, 
+`model.evaluate()` and their arguments, refer to the official Keras
+documentation https://keras.io/models/model/.
+""" 
 
 
-model.summary()
+# Tensorboard callbacks /metrics /monitor training
 
-
-# ### Tensorboard callbacks /metrics /monitor training
-
-# <span style="color:red"> **Size of these files is killing storage during training. Is it histograms?**</span>
-
-# In[33]:
-
-
-tb = TensorBoard(log_dir='./learn_embedding_logs', histogram_freq=1, write_graph=True, write_images=False)
-
+tb = TensorBoard(
+    log_dir='./learn_embedding_logs', histogram_freq=1,
+    write_graph=True, write_images=False
+    )
 
 # In[37]:
 
@@ -563,435 +516,211 @@ class Metrics(Callback):
     def on_epoch_end(self, epoch, logs={}):
         val_predict = (np.asarray(self.model.predict(self.model.validation_data[0]))).round()
         val_targ = self.model.validation_data[1]
-        
+
         self.val_f1s.append(f1_score(val_targ, val_predict, average='micro'))
         self.val_recalls.append(recall_score(val_targ, val_predict))
         self.val_precisions.append(precision_score(val_targ, val_predict))
-        print("- val_f1: %f — val_precision: %f — val_recall %f" 
-                %(f1_score(val_targ, val_predict, average='micro'), 
-                  precision_score(val_targ, val_predict),
-                   recall_score(val_targ, val_predict)))
+
+        f1 = f1_score(val_targ, val_predict, average='micro')
+        precision = precision_score(val_targ, val_predict),
+        recall = recall_score(val_targ, val_predict)
+
+        logger.info("Metrics: - val_f1: %s — val_precision: %s — val_recall %s", 
+                fi, precision, recall)
         return
- 
+
 metrics = Metrics()
 
+# Train model
 
-# ### 3. Train model
-
-# In[35]:
-
-
-# metrics callback causes: CCCCCCR55555555511155
-# So disable for now
+# NOTE: Disable tensorboard callback which massively increases model runtime
+# from 17 minutes to 3 hours (roughly!). Add in callbacks=[tb] to replace.
 
 model.fit(
     x_train, y_train, 
     validation_data=(x_val, y_val), 
+<<<<<<< HEAD
     epochs=EPOCHS, batch_size=BATCH_SIZE
+=======
+    epochs=10, batch_size=128
+>>>>>>> ba9fc2b... Add logging and tidy comments
 )
 
+# Evaluate model
 
-# ### Evaluate model
-
-# #### Training metrics
-
-# In[36]:
-
+# Training metrics
 
 y_prob = model.predict(x_train)
 
+logger.debug(y_prob.shape)
 
-# In[37]:
-
-
-y_prob.shape
-
-
-# In[38]:
-
-
-y_pred = y_prob.copy(deep=True)
+y_pred = y_prob.copy()
 y_pred[y_pred>P_THRESHOLD] = 1
 y_pred[y_pred<P_THRESHOLD] = 0
 
+logger.debug(f1_score(y_train, y_pred, average='micro'))
 
-# In[39]:
+# average= None, the scores for each class are returned.
+logger.debug(
+        precision_recall_fscore_support(y_train, y_pred, average=None, sample_weight=None)
+        )
 
-
-f1_score(y_train, y_pred, average='micro')
-
-
-# In[40]:
-
-
-#average= None, the scores for each class are returned.
-precision_recall_fscore_support(y_train, y_pred, average=None, sample_weight=None)
-
-
-# In[41]:
-
-
-a = precision_recall_fscore_support(y_train, y_pred, average=None, sample_weight=None)
-
-
-# In[42]:
-
-
-pd.DataFrame(list(a))
-
-
-# In[43]:
-
-
-f1_byclass = pd.DataFrame((a)[2], columns=['f1'])
-
-
-# In[44]:
-
-
-support_byclass = pd.DataFrame((a)[3], columns=['support'])
-
-f1_byclass = pd.merge(
-    left=f1_byclass, 
-    right=support_byclass, 
-    left_index=True,
-    right_index=True,
-    how='outer', 
-    validate='one_to_one'
-)
-
-f1_byclass['index_col'] = f1_byclass.index
-
-
-# In[45]:
-
-
-f1_byclass['level2taxon'] = f1_byclass['index_col'].map(labels_index).copy()
-
-
-# In[47]:
-
-
-print("At p_threshold of {}, there were {} out of {} ({})% taxons with auto-tagged content in the training data"
-      .format(P_THRESHOLD, 
-              f1_byclass.loc[f1_byclass['f1'] > 0].shape[0], 
-              y_pred.shape[1], 
-              (f1_byclass.loc[f1_byclass['f1'] > 0].shape[0]/y_pred.shape[1])*100 ))
-
-
-# In[48]:
-
-
-no_auto_content = f1_byclass.loc[f1_byclass['f1'] == 0]
-no_auto_content = no_auto_content.set_index('level2taxon')
-
-
-# In[49]:
-
-
-no_auto_content['support'].sort_values().plot( kind = 'barh', figsize=(20, 20))
-
-
-# In[50]:
-
-
-classes_predictedto = f1_byclass.loc[f1_byclass['f1'] > 0]
-classes_predictedto = classes_predictedto.set_index('level2taxon') 
-
-
-# In[51]:
-
-
-classes_predictedto.plot.scatter(x='support', y='f1', figsize=(20, 10), xticks=np.arange(0, 9700, 100))
-
-
-# In[52]:
-
-
-classes_predictedto['f1'].sort_values().plot( kind = 'barh', figsize=(20, 20))
-
-
-# In[53]:
-
-
-#Calculate globally by counting the total true positives, false negatives and false positives.
-precision_recall_fscore_support(y_train, y_pred, average='micro', sample_weight=None) 
-
-
-# In[54]:
-
-
-#Calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account
-precision_recall_fscore_support(y_train, y_pred, average='macro', sample_weight=None)
-
-
-# #### Validation metrics
-
-# In[55]:
-
+# Validation metrics
 
 y_pred_val = model.predict(x_val)
-
-
-# In[56]:
-
 
 y_pred_val[y_pred_val>=P_THRESHOLD] = 1
 y_pred_val[y_pred_val<P_THRESHOLD] = 0
 
+# average= None, the scores for each class are returned.
 
-# In[57]:
+logger.debug(precision_recall_fscore_support(y_val, y_pred_val, average=None, sample_weight=None))
 
+# Calculate globally by counting the total true positives, false negatives 
+# and false positives.
 
-#average= None, the scores for each class are returned.
-precision_recall_fscore_support(y_val, y_pred_val, average=None, sample_weight=None)
-
-
-# In[58]:
-
-
-#Calculate globally by counting the total true positives, false negatives and false positives.
-precision_recall_fscore_support(y_val, y_pred_val, average='micro', sample_weight=None) 
-
-
-# In[59]:
-
-
-#Calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account
-precision_recall_fscore_support(y_val, y_pred_val, average='macro', sample_weight=None)
-
+logger.debug(precision_recall_fscore_support(
+    y_val, y_pred_val, average='micro', sample_weight=None)
+     )
 
 # ## Tag unlabelled content
 
-# In[142]:
-
-
 def get_predictions(new_texts, df, level1taxon=False):
-    #process data for model input
-    
-    new_sequences = tokenizer.texts_to_sequences(new_texts) #yield one sequence per input text
+    """
+    Process data for model input
+    """
+    # Yield one sequence per input tex
+    new_sequences = tokenizer.texts_to_sequences(new_texts)
 
     new_word_index = tokenizer.word_index
-    print('Found %s unique tokens.' % len(new_word_index))
+    logger.debug('Found %s unique tokens.', len(new_word_index))
 
-    x_new = pad_sequences(new_sequences, maxlen= MAX_SEQUENCE_LENGTH) #MAX_SEQUENCE_LENGTH
-    
-    print('Shape of untagged tensor:', x_new.shape)
-    
-    #predict tag for untagged data
+    x_new = pad_sequences(new_sequences, maxlen=MAX_SEQUENCE_LENGTH)
+
+    logger.debug('Shape of untagged tensor: %s', x_new.shape)
+
+    # predict tag for untagged data
+
     y_pred_new = model.predict(x_new)
-    
-    #get model output into pandas & get a column to track index for later merge
+
+    # Get model output into pandas & get a column to track index for later
+    # merge
+
     y_pred_new = pd.DataFrame(y_pred_new)
     y_pred_new['index_col'] = y_pred_new.index
+
+    # Make long by taxon so easier to filter rows and examine effect of 
+    #p_threshold
     
-    #Make long by taxon so easier to filter rows and examine effect of p_threshold
     y_pred_new = pd.melt(y_pred_new, id_vars=['index_col'],
-                             var_name='level2taxon_code', value_name='probability')
-    
-    #get taxon names
+                         var_name='level2taxon_code', value_name='probability')
+
+    # Get taxon names
     y_pred_new['level2taxon'] = y_pred_new['level2taxon_code'].map(labels_index)
-    
+
+    # Get the info about the content
     if level1taxon==False:
-        #get the info about the content
-        new_info = df[[ 'base_path', 'content_id', 'title', 'description', 
-                   'document_type', 'publishing_app', 'locale']]
+        # Get the info about the content
+        new_info = df[['base_path', 'content_id', 'title', 'description', 
+                       'document_type', 'publishing_app', 'locale']]
     else:
-        new_info = df[[ 'base_path', 'content_id', 'title', 'description', 
-                   'document_type', 'publishing_app', 'locale', 'level1taxon']]
+        new_info = df[['base_path', 'content_id', 'title', 'description', 
+                       'document_type', 'publishing_app', 'locale', 'level1taxon']]
+
+    # Merge content info with taxon prediction
     
-    
-    #merge content info with taxon prediction
     pred_new = pd.merge(
-    left=new_info, 
-    right=y_pred_new, 
-    left_index=True,
-    right_on='index_col',
-    how='outer'
-    )
-    
-    #drop the cols needed for mergingin and naming
-    pred_new.drop(['index_col'], axis=1, inplace = True)
-    
-    #keep only rows where prob of taxon > 0.5
-    
-    
-    return pred_new.loc[pred_new['probability'] > P_THRESHOLD] #only return rows/samples where probability is hihger than threshold
-    
+                        left=new_info,
+                        right=y_pred_new,
+                        left_index=True,
+                        right_on='index_col',
+                        how='outer'
+                       )
 
+    # Drop the cols needed for mergingin and naming
+    
+    pred_new.drop(['index_col'], axis=1, inplace=True)
 
-# ### Untagged
+    # Only return rows/samples where probability is hihger than threshold
 
-# In[122]:
+    return pred_new.loc[pred_new['probability'] > P_THRESHOLD]
 
+# Untagged
 
-#read in untagged content
+# Read in untagged content
+
 untagged_raw = pd.read_csv(os.path.join(DATADIR, 'untagged_content.csv'), dtype=object)
-
-
-# In[138]:
-
 
 new_texts = untagged_raw['combined_text']
 
-
-# In[143]:
-
-
 pred_untagged = get_predictions(new_texts, untagged_raw)
 
+logger.debug('Number of unique content items: %s', pred_untagged.content_id.nunique())
+logger.debug('Number of content items tagged to taxons with more than p_threshold: %s', pred_untagged.shape)
 
-# In[177]:
-
-
-#data is long by taxon
-print('Number of unique content items: {}'.format(pred_untagged.content_id.nunique()))
-print('Number of content items tagged to taxons with more than p_threshold: {}'.format(pred_untagged.shape))
-
-
-# In[154]:
-
+# TODO set 0.65 and 0.85 as environment vars
 
 pred_untagged.loc[(pred_untagged['probability'] > 0.65) & (pred_untagged['probability'] < 0.85)].sort_values(by='probability', ascending=False)
 
+# TODO Use the logging friendly class and method defined pipeline_functions.py
 
-# In[146]:
-
-
-#write to csv
 pred_untagged.to_csv(os.path.join(DATADIR, 'predictions_for_untagged_data_trainingdatatok.csv'), index=False)
 
+# Apply tokenizer to our text data
 
-# In[144]:
-
-
-# apply tokenizer to our text data
 tokenizer.fit_on_texts(new_texts)
 
 pred_untagged_refit_tok = get_predictions(new_texts, untagged_raw)
 
+# TODO Use the logging friendly class and method defined pipeline_functions.py
 
-# In[145]:
-
-
-#write to csv
+# write to csv
 pred_untagged_refit_tok.to_csv(os.path.join(DATADIR, 'predictions_for_untagged_data_refittok.csv'), index=False)
 
+# New data (untagged + old taxons)
 
-# ### New data (untagged + old taxons)
-
-# old_taxons data has no combined text. This needs fixing in the data pipeline before being able to use these data for predictions
-
-# In[109]:
-
+# old_taxons data has no combined text. This needs fixing in the data pipeline
+# before being able to use these data for predictions.
 
 #read in untagged content
 new_raw = pd.read_csv(os.path.join(DATADIR, 'new_content.csv'), dtype=object)
 
+# TODO explain these!
 
-# In[112]:
+logger.debug(new_raw.shape)
+logger.debug(type(new_raw['combined_text'][0]))
+logger.debug(len(new_raw[new_raw['combined_text'].isna()]))
+logger.debug((new_raw.loc[(new_raw['combined_text'].isna()) & (new_raw['untagged_type'] != 'untagged')]).shape)
 
+# Make a copy so you can edit data without needed to read in each time
+new_df = new_raw.copy()
 
-new_raw.shape
+pred_new = get_predictions(new_df)
 
+# TODO Set this probability in an environment var
+# Keep only rows where prob of taxon > 0.5
 
-# In[116]:
-
-
-type(new_raw['combined_text'][0])
-
-
-# In[128]:
-
-
-len(new_raw[new_raw['combined_text'].isna()])
-
-
-# In[132]:
-
-
-(new_raw.loc[(new_raw['combined_text'].isna()) & (new_raw['untagged_type'] != 'untagged')]).shape
-
-
-# In[110]:
-
-
-#make a copy so you can edit data without needed to read in each time
-new_df = new_raw.copy(deep=True)
-
-
-# In[111]:
-
-
-pred_new = get_predictions(new_df )
-
-
-# In[ ]:
-
-
-#keep only rows where prob of taxon > 0.5
 pred_new = pred_new.loc[pred_new['probability'] > 0.5]
 
+# TODO Use the logging friendly class and method defined pipeline_functions.py
+# write to csv
 
-# In[ ]:
-
-
-#write to csv
 pred_new.to_csv(os.path.join(DATADIR, 'predictions_for_new_data.csv'), index=False)
 
-
-# ### Labelled at level1only
-
-# In[155]:
-
+# Labelled at level1only
 
 labelled_level1 = pd.read_csv(os.path.join(DATADIR, 'labelled_level1.csv'), dtype=object)
 
-
-# In[159]:
-
-
 level1_texts = labelled_level1['combined_text']
 
+# Reset tokenizer to training data texts
 
-# In[160]:
-
-
-#reset tokenizer to training data texts
 tokenizer.fit_on_texts(texts)
 
-
-# In[166]:
-
-
 pred_labelled_level1 = get_predictions(level1_texts, labelled_level1, level1taxon=True)
-
-
-# In[167]:
-
-
 pred_labelled_level1.sort_values(by='probability', ascending=False)
 
+# TODO Use the logging friendly class and method defined pipeline_functions.py
+# Write to csv
 
-# In[168]:
-
-
-#write to csv
 pred_labelled_level1.to_csv(os.path.join(DATADIR, 'predictions_for_level1only.csv'), index=False)
-
-
-# In[47]:
-
-
-from IPython.display import SVG
-from keras.utils.vis_utils import model_to_dot
-
-SVG(model_to_dot(model).create(prog='dot', format='svg'))
-
-
-# In[45]:
-
-
-from keras.utils import plot_model
-plot_model(model, to_file='cnn.png', show_shapes=True)
-
