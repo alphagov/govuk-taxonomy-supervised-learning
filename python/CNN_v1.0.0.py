@@ -1,59 +1,28 @@
-
 # coding: utf-8
+"""
+Convolutional NN to classify govuk content to level2 taxons
 
-# ## Convolutional NN to classify govuk content to level2 taxons
+Based on: https://blog.keras.io/using-pre-trained-word-embeddings-in-a-keras-model.html
+"""
 
-# Based on:
-# https://blog.keras.io/using-pre-trained-word-embeddings-in-a-keras-model.html
-
-# ## To do:
-# - ~~Consider grouping very small classes (especially if too small for evaluation)~~
-# - ~~Split data into training, validation and test to avoid overfitting validation data during hyperparamter searches & model architecture changes~~
-# - ~~Try learning embeddings~~--
-# - Try changing pos_ratio
-# - Try implementing class_weights during model fit (does this do the same as the weighted binary corss entropy?)
-# - Work on tensorboard callbacks
-# - ~~Create dictionary of class indices to taxon names for viewing results~~
-# - Check model architecture
-# - consider relationship of training error to validation error - overfitting/bias?
-# - train longer
-# - Try differnet max_sequence_length
-# - Check batch size is appropriate
-# - Also think about:
-#   - regularization (e.g. dropout) 
-#   - fine-tuning the Embedding layer
-
-# ### Load requirements and data
-
-# TODO: edit requirement.txt to include only these packages and do not include tensorflow because this conflicts with tf on AWS when using on GPU.
-
-# In[85]:
-
-
-import pandas as pd
-import numpy as np
 import os
 import logging
 import logging.config
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
-
-from keras.utils import to_categorical, layer_utils, plot_model
-
-from keras.layers import (Embedding, Input, Dense, 
-                          Activation, Conv1D, MaxPooling1D, Flatten)
-from keras.models import Model, Sequential
-from keras.optimizers import rmsprop
+from keras.models import Model
 from keras.callbacks import TensorBoard, Callback
-import keras.backend as K
 from keras.losses import binary_crossentropy
-
-from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
-from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score 
-from sklearn.metrics import precision_recall_fscore_support, classification_report
-from sklearn.utils import class_weight
-
+from keras.layers import (Embedding, Input, Dense, 
+                          Conv1D, MaxPooling1D, Flatten)
+from sklearn.metrics import (f1_score, precision_score, recall_score)
+from sklearn.metrics import (precision_recall_fscore_support)
 import tensorflow as tf
+import pandas as pd
+import numpy as np
+from pipeline_functions import write_csv
+from weightedbinarycrossentropy import WeightedBinaryCrossEntropy
+from utils import f1, Metrics, get_predictions, shuffle_split
 
 # Get environmental vars from systems
 
