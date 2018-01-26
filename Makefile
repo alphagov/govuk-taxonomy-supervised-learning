@@ -14,21 +14,23 @@ content : $(DATADIR)/clean_content.csv
 labelled : $(DATADIR)/labelled.csv
 new: $(DATADIR)/new_content.csv
 
-$(DATADIR)/new_content.csv : python/create_new.py $(DATADIR)/untagged_content.csv \
-    $(DATADIR)/old_taxons.csv
-	python3 python/create_new.py
-
-$(DATADIR)/labelled.csv : python/create_labelled.py $(DATADIR)/raw_taxons.json
-	python3 python/create_labelled.py
 
 $(DATADIR)/clean_taxons.csv : python/clean_taxons.py $(DATADIR)/raw_taxons.json
 	python3 python/clean_taxons.py
 
 $(DATADIR)/clean_content.csv : python/clean_content.py $(DATADIR)/raw_content.json.gz \
-$(DATADIR)/document_type_group_lookup.json
+    $(DATADIR)/document_type_group_lookup.json
 	python3 python/clean_content.py
 
-$(DATADIR)/document_type_group_lookup.json :
+$(DATADIR)/new_content.csv : python/create_new.py $(DATADIR)/untagged_content.csv \
+    $(DATADIR)/old_taxons.csv
+	python3 python/create_new.py
+
+$(DATADIR)/labelled.csv : python/create_labelled.py $(DATADIR)/clean_content.csv \
+    $(DATADIR)/clean_taxons.csv
+	python3 python/create_labelled.py
+
+$(DATADIR)/document_type_group_lookup.json : 
 	aws s3 cp $(S3BUCKET)/document_type_group_lookup.json $(DATADIR)/document_type_group_lookup.json
 
 $(DATADIR)/raw_taxons.json :
