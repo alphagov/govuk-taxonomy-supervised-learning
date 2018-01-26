@@ -3,15 +3,15 @@
 # coding: utf-8
 
 import json
+import logging.config
 import os
 import pathlib
-import logging
-import logging.config
+from collections import OrderedDict
+
 import pandas as pd
+from lxml import html
 from pandas.io.json import json_normalize
-import json
-from lxml import etree,html
-from collections import Counter,OrderedDict
+
 from pipeline_functions import extract_text, write_csv
 
 # Setup pipeline logging
@@ -42,7 +42,7 @@ except AssertionError:
     logger.exception('%s does not exist', CONTENT_INPUT_PATH)
     raise
 
-#Read in raw content file
+# Read in raw content file
 logger.info('Importing data from %s.', CONTENT_INPUT_PATH)
 
 # Convert to uri to satisfy pd.read_json
@@ -82,7 +82,7 @@ logger.info('Number of duplicate content_ids in raw content: %s.',
             content[content.duplicated('content_id')].shape[0])
 logger.debug('Printing head from content: %s.', content.head())
 
-#Read in lookup table for document type group
+# Read in lookup table for document type group
 logger.info('Importing document type group lookup from %s.',
             DOCUMENT_TYPE_PATH)
 
@@ -92,7 +92,7 @@ with open(DOCUMENT_TYPE_PATH, 'r') as fp:
 docgp_lookup = pd.DataFrame.from_dict(lookup_dict, orient='index')
 docgp_lookup.columns = ['document_type_gp']
 
-#Merge lookup dataframe
+# Merge lookup dataframe
 content = pd.merge(
     left=content,
     right=docgp_lookup,
@@ -113,57 +113,82 @@ def is_json(raw_text):
         return False
     return True
 
+
 def is_html(raw_text):
     return html.fromstring(str(raw_text)).find('.//*') is not None
 
+
 look = ['text', 'child_sections', 'headers']
 child_keys = ['title','description']
+filtered = ['body','brand','documents','final_outcome_detail','final_outcome_documents',
+            'government','headers','introduction','introductory_paragraph',
+            'licence_overview','licence_short_description','logo','metadata','more_information','need_to_know',
+            'other_ways_to_apply','summary','ways_to_respond','what_you_need_to_know','will_continue_on']
+
 
 def get_text(x):
+    """
+From dict to json and back (to OrderedDict), iterate over json from details column (based on list filtered, should
+reconsider) and extract plaintext from included html.
+    :param x: details cell from dataset
+    :return: plaintext
+    """
     total_text = ""
-    ### From dict to json and back (to OrderedDict).
     string_json = json.dumps(OrderedDict(x))
     order_json = json.loads(string_json,object_pairs_hook=OrderedDict)
-    ### Iterate over json from details.
-    for key,raw_text in order_json.items():
-        if isinstance(raw_text,str) and len(raw_text)>2:
-            raw_token = raw_text.split(" ")
-            if len(raw_token)>1:
-                raw_string = extract_text(raw_text)
-                total_text += " " + raw_string
-        elif isinstance(raw_text,list) and len(raw_text)>0:
-            for sub_text in raw_text:
-                if is_json(sub_text):
-                    string_json2 = json.dumps(OrderedDict(sub_text))
-                    order_json2 = json.loads(string_json2,object_pairs_hook=OrderedDict)
-                    if 'body' in order_json2.keys() and \
-                                isinstance(order_json2['body'],str):
-                            raw_string2 = extract_text(order_json2['body'])
-                            if len(raw_string2.split(" ")) > 10:
-                                total_text += " " + raw_string2
-                    elif 'child_sections' in order_json2.keys():
-                            for child in order_json2['child_sections']:
-                                for key in child_keys:
-                                    total_text += " " + child[key]
-                elif is_html(sub_text):
-                    str_from_html = extract_text(sub_text)
-                    total_text += " " + str_from_html
+    for key,raw_text in sorted(order_json.items()):
+        if key in filtered:
+            if isinstance(raw_text,str) and len(raw_text)>1:
+                raw_text = raw_text.replace("-"," ")
+                raw_token = raw_text.split(" ")
+                if len(raw_token)>0:
+                    raw_string = extract_text(raw_text)
+                    total_text += " " + raw_string
+            elif isinstance(raw_text,list) and len(raw_text)>0:
+                for sub_text in raw_text:
+                    if is_json(sub_text):
+                        total_text += nested_extract(sub_text)
+                    elif is_html(sub_text):
+                        str_from_html = extract_text(sub_text)
+                        total_text += " " + str_from_html
     return total_text.strip()
 
+
+def nested_extract(x):
+    """
+Iterate over nested json (avoiding recursion), flattening loops.
+    :param x: nested `details` cell contents
+    :return: plaintext
+    """
+    ttext = ""
+    string_json2 = json.dumps(OrderedDict(x))
+    order_json2 = json.loads(string_json2,object_pairs_hook=OrderedDict)
+    if 'body' in order_json2.keys() and isinstance(order_json2['body'],str):
+        raw_string2 = extract_text(order_json2['body'])
+        if len(raw_string2.split(" ")) > 10:
+                ttext += " " + raw_string2
+    elif 'child_sections' in order_json2.keys():
+        for child in order_json2['child_sections']:
+            for key in child_keys:
+                ttext += " " + child[key]
+    return ttext
+
 # Clean the html
+
 
 logger.info('Extracting title, description, and text from content.')
 
 logger.debug('Extracting text from nested json tags')
+
 content['body'] = content['details'].map(get_text)
 logger.debug('Text extracted from body looks like: %s', content['body'][0:10])
 
 logger.debug('Extracting text from description')
-content = content.assign(description = content['description'].apply(extract_text))
+content = content.assign(description=content['description'].apply(extract_text))
 logger.debug('Text extracted from description looks like: %s', content['description'][0:10])
 
 logger.debug('Extracting text from title')
-content = content.assign(title = content['title'].apply(extract_text))
+content = content.assign(title=content['title'].apply(extract_text))
 logger.debug('Text extracted from title looks like: %s', content['title'][0:10])
 
 logger.info('Concatenating title, description, and text.')
@@ -190,7 +215,7 @@ logger.debug("Checking type of untagged['first_published_at']: %s",
 
 logger.debug("Creating timeseries index on untagged['first_published_at']")
 
-untagged = untagged.assign(first_published_at = pd.to_datetime(untagged['first_published_at']))
+untagged = untagged.assign(first_published_at=pd.to_datetime(untagged['first_published_at']))
 
 logger.debug("Checking type of untagged['first_published_at']: %s",
              untagged['first_published_at'].dtype)
@@ -200,7 +225,7 @@ untagged.index = untagged['first_published_at']
 
 # Save untagged content items
 
-write_csv(untagged, 'Untagged content', 
+write_csv(untagged, 'Untagged content',
           UNTAGGED_OUTPUT_PATH, logger)
 
 logger.info('Removing content with no taxons')
@@ -211,7 +236,7 @@ logger.info('Removing content with no taxons')
 
 content = content[content['taxons'].notnull()]
 
-logger.debug('content.columns: %s',content.columns)
+logger.debug('content.columns: %s', content.columns)
 
 # Save column names, excluding 'taxons' for later melt
 
@@ -253,7 +278,7 @@ logger.debug('content_long.shape: %s', content_long.shape)
 
 logger.info('Extract content_id into taxon_id column.')
 
-content_long = content_long.assign(taxon_id = [d['content_id'] for d in content_long['taxon']])
+content_long = content_long.assign(taxon_id=[d['content_id'] for d in content_long['taxon']])
 
 logger.debug("content_long['taxon'][0:10]: %s", content_long['taxon'][0:10])
 
@@ -270,7 +295,7 @@ try:
     assert content_long.shape[1] == 15
 except AssertionError:
     logger.exception('Incorrect number of columns in content_long (labelled content)')
-    raise 
+    raise
 
 # Assert content long has more than 300000 rows
 
@@ -297,10 +322,10 @@ try:
     assert untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0] < 10
 except AssertionError:
     logger.exception('There are %s content items in both the untagged and labelled data',
-            untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0])
+                     untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0])
     raise
 
 # Write out to intermediate csv
 
-write_csv(content_long, 'Long content dataframe', 
+write_csv(content_long, 'Long content dataframe',
           CONTENT_OUTPUT_PATH, logger)

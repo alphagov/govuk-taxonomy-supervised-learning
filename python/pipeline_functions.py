@@ -80,7 +80,7 @@ def extract_text(body):
     """
     #TODO: Tidy this up!
     r = None
-    if body and len(body) > 1:
+    if body and body!="\n":
         try:
             tree = etree.HTML(body)
             r = tree.xpath('//text()')
