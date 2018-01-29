@@ -1,7 +1,10 @@
 from data_extraction import content_export
 from data_extraction import taxonomy_query, plek
 import json
+import sys
 import functools
+from multiprocessing import Pool
+
 
 with open('config/data_export_fields.json') as json_data_file:
     configuration = json.load(json_data_file)
@@ -27,7 +30,8 @@ def taxonomy():
 
 
 def content():
-    content_generator = map(get_content, content_links_generator)
+    pool = Pool(10)
+    content_generator = pool.imap(get_content, content_links_generator, 50)
     return filter(lambda link: link, content_generator)
 
 
