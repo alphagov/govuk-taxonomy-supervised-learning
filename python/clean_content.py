@@ -175,20 +175,6 @@ Iterate over nested json (avoiding recursion), flattening loops.
                 ttext += " " + child[key]
     return ttext
 
-    # ttext = ""
-    # string_json2 = json.dumps(OrderedDict(x))
-    # order_json2 = json.loads(string_json2,object_pairs_hook=OrderedDict)
-    # if 'body' in order_json2.keys() and isinstance(order_json2['body'],str):
-    #     raw_string2 = extract_text(order_json2['body'])
-    #     if len(raw_string2.split(" ")) > 10:
-    #             ttext += " " + raw_string2
-    # elif 'child_sections' in order_json2.keys():
-    #     for child in order_json2['child_sections']:
-    #         for key in child_keys:
-    #             ttext += " " + child[key]
-    # return ttext
-
-
 # Clean the html
 
 
