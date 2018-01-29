@@ -127,6 +127,17 @@ logger.debug('Text extracted from title looks like: %s', content['title'][0:10])
 logger.info('Concatenating title, description, and text.')
 content['combined_text'] = content['title'] + ' ' + content['description'] + ' ' + content['body']
 
+# Filter out content not in english (locale =='en')
+
+logger.info('Filtering out non-english documents')
+logger.info('content.shape before filtering: %s', content.shape)
+
+content = content[content.locale == 'en']
+
+logger.info("content.shape after keeping only english content: %s", content.shape)
+
+
+
 # Identify and select untagged content items
 
 logger.info('Separating untagged content')
