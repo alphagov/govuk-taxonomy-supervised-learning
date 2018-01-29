@@ -80,14 +80,17 @@ def extract_text(body):
     """
     #TODO: Tidy this up!
     r = None
-    if body and body != '\n':
-        tree = etree.HTML(body)
-        r = tree.xpath('//text()')
-        r = ' '.join(r)
-        r = r.strip().replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
-        r = r.replace('\n', ' ').replace(',', ' ')
-        r = r.lower()
-        r = ' '.join(r.split())
+    if body and body!="\n":
+        try:
+            tree = etree.HTML(body)
+            r = tree.xpath('//text()')
+            r = ' '.join(r)
+            r = r.strip().replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+            r = r.replace('\n', ' ').replace(',', ' ')
+            r = r.lower()
+            r = ' '.join(r.split())
+        except ValueError:
+            print("exception @ extract:",type(body),body)
     if not r:
         r = ' '
     return r
