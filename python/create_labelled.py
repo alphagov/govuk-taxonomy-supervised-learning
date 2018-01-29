@@ -118,9 +118,11 @@ logger.info('Extracting content tagged to old taxons not in the topic taxonomy'
 content_old_taxons = labelled[
     ['base_path', 'content_id', 'document_type',
      'first_published_at', 'locale', 'primary_publishing_organisation',
-     'publishing_app', 'title', 'taxon_id']]
+     'publishing_app', 'title', 'description', 'combined_text', 'taxon_id', '_merge']]
 
-content_old_taxons = content_old_taxons[labelled._merge == 'left_only']
+content_old_taxons = content_old_taxons[content_old_taxons._merge == 'left_only']
+
+content_old_taxons = content_old_taxons.drop(['_merge'], axis=1)
 
 logger.info("There are %s taxons represented in the %s content item/taxon "
             "combinations which have no corresponding taxon in the taxon data",
