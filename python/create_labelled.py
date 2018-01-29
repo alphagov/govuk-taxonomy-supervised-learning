@@ -101,7 +101,7 @@ logger.info('Checking unique content_ids from content without taxons '
             '(left_only) after merge: %s',
             labelled[labelled._merge == 'left_only'].content_id.nunique())
 
-# Save out empty taxons (those which have no content tagged
+# Save out empty taxons (those which have no content tagged
 # to them)
 
 logger.info('Extracting empty taxons (right_only) after merge')

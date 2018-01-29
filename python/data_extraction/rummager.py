@@ -10,7 +10,7 @@ class Rummager():
         self.base_url = base_url
 
     def search_generator(self, args, page_size=100):
-        for index in count(page_size):
+        for index in count(0, page_size):
             search_params = merge(args, {"start": index, "count": page_size})
             results = self.__search(search_params).get('results', [])
             for result in results:
