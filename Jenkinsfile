@@ -19,6 +19,16 @@ node {
     govuk.setEnvar("PATH", "${pwd()}/venv/bin:${env.PATH}")
     // A more recent version of pip is required to install tensorflow
     sh("pip3 install --upgrade pip")
+    sh("pip3 install wheel")
+  }
+
+  stage('pip wheel') {
+    // This speeds up the pip install step by generating wheels which
+    // will be cached.
+    govuk.setEnvar("WHEELHOUSE", "${env.HOME}/.cache/pip/wheelhouse")
+    govuk.setEnvar("PIP_FIND_LINKS", "file://${env.WHEELHOUSE}")
+    govuk.setEnvar("PIP_WHEEL_DIR", "${env.WHEELHOUSE}")
+    sh 'pip3 wheel --global-option bdist_ext -r python/requirements.txt'
   }
 
   stage('make pip_install') {
