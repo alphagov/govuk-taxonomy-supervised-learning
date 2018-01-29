@@ -54,5 +54,6 @@ def __write_json(filename, generator):
             file.write(",\n")
             file.write(json.dumps(taxon))
             if index % 1000 is 0:
-                print("Documents exported: %s" % index)
+                print("Documents exported: %s" % index, file=sys.stderr)
         file.write("]\n")
+        print("Documents exported: %s" % index, file=sys.stderr)
