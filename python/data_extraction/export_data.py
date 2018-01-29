@@ -35,12 +35,13 @@ def content():
     return filter(lambda link: link, content_generator)
 
 
-def export_content():
-    __write_json("/tmp/content.json", content())
+
+def export_content(output="data/content.json"):
+    __write_json(output, content())
 
 
-def export_taxons():
-    __write_json("/tmp/taxons.json", taxonomy())
+def export_taxons(output="data/taxons.json"):
+    __write_json(output, taxonomy())
 
 
 # PRIVATE
