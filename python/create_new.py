@@ -18,7 +18,7 @@ logger = logging.getLogger('create_new')
 
 DATADIR = os.getenv('DATADIR')
 UNTAGGED_INPUT_PATH = os.path.join(DATADIR, 'untagged_content.csv')
-OLD_TAXONS_INPUT_PATH = os.path.join(DATADIR, 'old_taxons.csv')
+OLD_TAXONS_INPUT_PATH = os.path.join(DATADIR, 'old_taxons.csv.gz')
 
 # Set file output paths
 
@@ -42,7 +42,7 @@ logger.debug('untagged.head(): %s.', untagged.head())
 logger.info('Importing from %s as old_taxons', OLD_TAXONS_INPUT_PATH)
 
 old_taxons = pd.read_csv(
-    OLD_TAXONS_INPUT_PATH
+    OLD_TAXONS_INPUT_PATH, dtype=object, compression='gzip'
     )
 
 logger.info('old_taxons.shape: %s.', old_taxons.shape)
