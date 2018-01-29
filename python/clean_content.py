@@ -127,6 +127,18 @@ logger.debug('Text extracted from title looks like: %s', content['title'][0:10])
 logger.info('Concatenating title, description, and text.')
 content['combined_text'] = content['title'] + ' ' + content['description'] + ' ' + content['body']
 
+
+# Filter out content not in english (locale =='en')
+
+logger.info('Filtering out non-english documents')
+logger.info('content.shape before filtering: %s', content.shape)
+
+content = content[content.locale == 'en']
+
+logger.info("content.shape after keeping only english content: %s", content.shape)
+
+
+
 # stripout out-of-scope World items
 
 logger.info('content shape before removing doctypes related to world %s', content.shape)
@@ -134,6 +146,7 @@ content = content[content.document_type != 'worldwide_organisation']
 content = content[content.document_type != 'placeholder_world_location_news_page']
 content = content[content.document_type != 'travel_advice']
 logger.info('content shape after removing doctypes related to world %s', content.shape)
+
 
 # Identify and select untagged content items
 
