@@ -118,12 +118,13 @@ def is_html(raw_text):
     return html.fromstring(str(raw_text)).find('.//*') is not None
 
 
-look = ['text', 'child_sections', 'headers']
+look = ['title', 'body']
 child_keys = ['title','description']
 filtered = ['body','brand','documents','final_outcome_detail','final_outcome_documents',
             'government','headers','introduction','introductory_paragraph',
             'licence_overview','licence_short_description','logo','metadata','more_information','need_to_know',
-            'other_ways_to_apply','summary','ways_to_respond','what_you_need_to_know','will_continue_on']
+            'other_ways_to_apply','summary','ways_to_respond','what_you_need_to_know','will_continue_on','parts',
+            'collection_groups']
 
 
 def get_text(x):
@@ -163,15 +164,30 @@ Iterate over nested json (avoiding recursion), flattening loops.
     ttext = ""
     string_json2 = json.dumps(OrderedDict(x))
     order_json2 = json.loads(string_json2,object_pairs_hook=OrderedDict)
-    if 'body' in order_json2.keys() and isinstance(order_json2['body'],str):
-        raw_string2 = extract_text(order_json2['body'])
-        if len(raw_string2.split(" ")) > 10:
-                ttext += " " + raw_string2
+    if ('body' or 'title') in order_json2.keys():
+        for item in look:
+            raw_string2 = extract_text(order_json2[item])
+            if len(raw_string2.split()) > 1:
+                ttext += " " +raw_string2
     elif 'child_sections' in order_json2.keys():
         for child in order_json2['child_sections']:
             for key in child_keys:
                 ttext += " " + child[key]
     return ttext
+
+    # ttext = ""
+    # string_json2 = json.dumps(OrderedDict(x))
+    # order_json2 = json.loads(string_json2,object_pairs_hook=OrderedDict)
+    # if 'body' in order_json2.keys() and isinstance(order_json2['body'],str):
+    #     raw_string2 = extract_text(order_json2['body'])
+    #     if len(raw_string2.split(" ")) > 10:
+    #             ttext += " " + raw_string2
+    # elif 'child_sections' in order_json2.keys():
+    #     for child in order_json2['child_sections']:
+    #         for key in child_keys:
+    #             ttext += " " + child[key]
+    # return ttext
+
 
 # Clean the html
 
