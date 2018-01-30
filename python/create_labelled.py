@@ -3,7 +3,6 @@
 '''
 
 import os
-import logging
 import logging.config
 import pandas as pd
 from pipeline_functions import write_csv
