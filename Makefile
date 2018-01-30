@@ -14,6 +14,11 @@ content : $(DATADIR)/clean_content.csv
 labelled : $(DATADIR)/labelled.csv
 new: $(DATADIR)/new_content.csv
 
+data/content.json:
+	cd python && python3 -u -c "from data_extraction.export_data import export_content; export_content(output='../data/content.json')"
+
+data/taxons.json:
+	cd python && python3 -u -c "from data_extraction.export_data import export_taxons; export_taxons(output='../data/taxons.json')"
 
 $(DATADIR)/clean_taxons.csv : python/clean_taxons.py $(DATADIR)/raw_taxons.json
 	python3 python/clean_taxons.py
@@ -30,7 +35,7 @@ $(DATADIR)/labelled.csv : python/create_labelled.py $(DATADIR)/clean_content.csv
     $(DATADIR)/clean_taxons.csv
 	python3 python/create_labelled.py
 
-$(DATADIR)/document_type_group_lookup.json : 
+$(DATADIR)/document_type_group_lookup.json :
 	aws s3 cp $(S3BUCKET)/document_type_group_lookup.json $(DATADIR)/document_type_group_lookup.json
 
 $(DATADIR)/raw_taxons.json :
@@ -58,7 +63,9 @@ clean :
 	    $(DATADIR)/untagged_content.csv $(DATADIR)/empty_taxons.csv \
 	    $(DATADIR)/labelled.csv $(DATADIR)/filtered.csv $(DATADIR)/old_taxons.csv \
 	    $(DATADIR)/labelled_level1.csv $(DATADIR)/labelled_level2.csv \
-	    $(DATADIR)/empty_taxons_not_world.csv $(DATADIR)/new_content.csv
+	    $(DATADIR)/empty_taxons_not_world.csv $(DATADIR)/new_content.csv \
+	    data/taxons.json data/content.json
+
 
 clean_all : clean
 	-rm -f $(DATADIR)/document_type_group_lookup.json \
