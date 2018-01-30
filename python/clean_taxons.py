@@ -22,7 +22,7 @@ logger = logging.getLogger('clean_taxons')
 
 DATADIR = os.getenv('DATADIR')
 TAXON_INPUT_PATH = os.path.join(DATADIR, 'raw_taxons.json')
-TAXON_OUTPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv')
+TAXON_OUTPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv.gz')
 
 # Convert to uri to satisfy pd.read_json
 

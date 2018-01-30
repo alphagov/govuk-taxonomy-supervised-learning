@@ -29,10 +29,10 @@ CONTENT_INPUT_PATH = os.path.join(DATADIR, CONTENT_INPUT_FILE)
 DOCUMENT_TYPE_FILE = 'document_type_group_lookup.json'
 DOCUMENT_TYPE_PATH = os.path.join(DATADIR, DOCUMENT_TYPE_FILE)
 
-CONTENT_OUTPUT_FILE = 'clean_content.csv'
+CONTENT_OUTPUT_FILE = 'clean_content.csv.gz'
 CONTENT_OUTPUT_PATH = os.path.join(DATADIR, CONTENT_OUTPUT_FILE)
 
-UNTAGGED_OUTPUT_FILE = 'untagged_content.csv'
+UNTAGGED_OUTPUT_FILE = 'untagged_content.csv.gz'
 UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, UNTAGGED_OUTPUT_FILE)
 
 # Assert that the file exists

@@ -27,7 +27,7 @@ def write_csv(dataframe, name, path, logger, index=False, **kwargs):
 
     try:
 
-        dataframe.to_csv(path, index=index, **kwargs)
+        dataframe.to_csv(path, index=index, compression='gzip',**kwargs)
 
     except Exception:
         logger.exception('Error writing %s to %s', name, path)

@@ -9,10 +9,10 @@
 # (note that you will need the necessary write permissions to do this)
 
 all : taxons content labelled
-taxons : $(DATADIR)/clean_taxons.csv
-content : $(DATADIR)/clean_content.csv
-labelled : $(DATADIR)/labelled.csv
-new: $(DATADIR)/new_content.csv
+taxons : $(DATADIR)/clean_taxons.csv.gz
+content : $(DATADIR)/clean_content.csv.gz
+labelled : $(DATADIR)/labelled.csv.gz
+new: $(DATADIR)/new_content.csv.gz
 
 data/content.json:
 	cd python && python3 -u -c "from data_extraction.export_data import export_content; export_content(output='../data/content.json')"
@@ -20,19 +20,19 @@ data/content.json:
 data/taxons.json:
 	cd python && python3 -u -c "from data_extraction.export_data import export_taxons; export_taxons(output='../data/taxons.json')"
 
-$(DATADIR)/clean_taxons.csv : python/clean_taxons.py $(DATADIR)/raw_taxons.json
+$(DATADIR)/clean_taxons.csv.gz : python/clean_taxons.py $(DATADIR)/raw_taxons.json
 	python3 python/clean_taxons.py
 
-$(DATADIR)/clean_content.csv : python/clean_content.py $(DATADIR)/raw_content.json.gz \
+$(DATADIR)/clean_content.csv.gz : python/clean_content.py $(DATADIR)/raw_content.json.gz \
     $(DATADIR)/document_type_group_lookup.json
 	python3 python/clean_content.py
 
-$(DATADIR)/new_content.csv : python/create_new.py $(DATADIR)/untagged_content.csv \
-    $(DATADIR)/old_taxons.csv
+$(DATADIR)/new_content.csv.gz : python/create_new.py $(DATADIR)/untagged_content.csv.gz \
+    $(DATADIR)/old_taxons.csv.gz
 	python3 python/create_new.py
 
-$(DATADIR)/labelled.csv : python/create_labelled.py $(DATADIR)/clean_content.csv \
-    $(DATADIR)/clean_taxons.csv
+$(DATADIR)/labelled.csv.gz : python/create_labelled.py $(DATADIR)/clean_content.csv.gz \
+    $(DATADIR)/clean_taxons.csv.gz
 	python3 python/create_labelled.py
 
 $(DATADIR)/document_type_group_lookup.json :
@@ -47,25 +47,24 @@ $(DATADIR)/raw_content.json.gz :
 # Forgive this horrible repetition.
 
 upload: labelled
-	aws s3 cp $(DATADIR)/untagged_content.csv $(S3BUCKET)/untagged_content.csv
-	aws s3 cp $(DATADIR)/empty_taxons.csv $(S3BUCKET)/empty_taxons.csv
-	aws s3 cp $(DATADIR)/labelled.csv $(S3BUCKET)/labelled.csv
-	aws s3 cp $(DATADIR)/filtered.csv $(S3BUCKET)/filtered.csv
-	aws s3 cp $(DATADIR)/old_taxons.csv $(S3BUCKET)/old_taxons.csv
-	aws s3 cp $(DATADIR)/labelled_level1.csv $(S3BUCKET)/labelled_level1.csv
-	aws s3 cp $(DATADIR)/labelled_level2.csv $(S3BUCKET)/labelled_level2.csv
-	aws s3 cp $(DATADIR)/empty_taxons_not_world.csv $(S3BUCKET)/empty_taxons_not_world.csv
-	aws s3 cp $(DATADIR)/new_content.csv $(S3BUCKET)/new_content.csv
+	aws s3 cp $(DATADIR)/untagged_content.csv.gz $(S3BUCKET)/untagged_content.csv.gz
+	aws s3 cp $(DATADIR)/empty_taxons.csv.gz $(S3BUCKET)/empty_taxons.csv.gz
+	aws s3 cp $(DATADIR)/labelled.csv.gz $(S3BUCKET)/labelled.csv.gz
+	aws s3 cp $(DATADIR)/filtered.csv.gz $(S3BUCKET)/filtered.csv.gz
+	aws s3 cp $(DATADIR)/old_taxons.csv.gz $(S3BUCKET)/old_taxons.csv.gz
+	aws s3 cp $(DATADIR)/labelled_level1.csv.gz $(S3BUCKET)/labelled_level1.csv.gz
+	aws s3 cp $(DATADIR)/labelled_level2.csv.gz $(S3BUCKET)/labelled_level2.csv.gz
+	aws s3 cp $(DATADIR)/empty_taxons_not_world.csv.gz $(S3BUCKET)/empty_taxons_not_world.csv.gz
+	aws s3 cp $(DATADIR)/new_content.csv.gz $(S3BUCKET)/new_content.csv.gz
 
 
 clean :
-	-rm -f $(DATADIR)/clean_taxons.csv $(DATADIR)/clean_content.csv \
-	    $(DATADIR)/untagged_content.csv $(DATADIR)/empty_taxons.csv \
-	    $(DATADIR)/labelled.csv $(DATADIR)/filtered.csv $(DATADIR)/old_taxons.csv \
-	    $(DATADIR)/labelled_level1.csv $(DATADIR)/labelled_level2.csv \
-	    $(DATADIR)/empty_taxons_not_world.csv $(DATADIR)/new_content.csv \
+	-rm -f $(DATADIR)/clean_taxons.csv.gz $(DATADIR)/clean_content.csv.gz\
+	    $(DATADIR)/untagged_content.csv.gz  $(DATADIR)/empty_taxons.csv.gz  \
+	    $(DATADIR)/labelled.csv.gz  $(DATADIR)/filtered.csv.gz  $(DATADIR)/old_taxons.csv.gz  \
+	    $(DATADIR)/labelled_level1.csv.gz  $(DATADIR)/labelled_level2.csv.gz  \
+	    $(DATADIR)/empty_taxons_not_world.csv.gz  $(DATADIR)/new_content.csv.gz 
 	    data/taxons.json data/content.json
-
 
 clean_all : clean
 	-rm -f $(DATADIR)/document_type_group_lookup.json \
