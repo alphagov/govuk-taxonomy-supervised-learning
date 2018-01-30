@@ -181,7 +181,6 @@ Iterate over nested json (avoiding recursion), flattening loops.
 logger.info('Extracting title, description, and text from content.')
 
 logger.info('Extracting text from nested json tags (previously body)')
-
 content['body'] = content['details'].map(get_text)
 logger.debug('Text extracted from body looks like: %s', content['body'][0:10])
 
