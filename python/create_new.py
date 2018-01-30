@@ -17,12 +17,12 @@ logger = logging.getLogger('create_new')
 # Setup input file paths
 
 DATADIR = os.getenv('DATADIR')
-UNTAGGED_INPUT_PATH = os.path.join(DATADIR, 'untagged_content.csv')
+UNTAGGED_INPUT_PATH = os.path.join(DATADIR, 'untagged_content.csv.gz')
 OLD_TAXONS_INPUT_PATH = os.path.join(DATADIR, 'old_taxons.csv.gz')
 
 # Set file output paths
 
-NEW_OUTPUT_PATH = os.path.join(DATADIR, 'new_content.csv')
+NEW_OUTPUT_PATH = os.path.join(DATADIR, 'new_content.csv.gz')
 
 
 # Import clean_content (output by clean_content.py)
@@ -30,7 +30,7 @@ NEW_OUTPUT_PATH = os.path.join(DATADIR, 'new_content.csv')
 logger.info('Importing from %s as untagged', UNTAGGED_INPUT_PATH)
 
 untagged = pd.read_csv(
-    UNTAGGED_INPUT_PATH
+    UNTAGGED_INPUT_PATH,compression='gzip'
     )
 
 logger.info('untagged.shape: %s.', untagged.shape)

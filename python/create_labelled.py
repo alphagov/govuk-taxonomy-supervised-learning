@@ -3,7 +3,6 @@
 '''
 
 import os
-import logging
 import logging.config
 import pandas as pd
 from pipeline_functions import write_csv
@@ -17,12 +16,12 @@ logger = logging.getLogger('create_labelled')
 # Setup input file paths
 
 DATADIR = os.getenv('DATADIR')
-CONTENT_INPUT_PATH = os.path.join(DATADIR, 'clean_content.csv')
-TAXONS_INPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv')
+CONTENT_INPUT_PATH = os.path.join(DATADIR, 'clean_content.csv.gz')
+TAXONS_INPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv.gz')
 
 # Set file output paths
 
-LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv.gz.gz')
+LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv.gz')
 FILTERED_OUTPUT_PATH = os.path.join(DATADIR, 'filtered.csv.gz')
 OLD_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'old_taxons.csv.gz')
 EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv.gz')
@@ -35,7 +34,7 @@ EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons_not_wor
 logger.info('Importing from %s as clean_content', CONTENT_INPUT_PATH)
 
 clean_content = pd.read_csv(
-    CONTENT_INPUT_PATH
+    CONTENT_INPUT_PATH,compression='gzip'
     )
 
 logger.info('clean_content.shape: %s.', clean_content.shape)
@@ -46,7 +45,7 @@ logger.debug('clean_content.head(): %s.', clean_content.head())
 logger.info('Importing from %s as clean_taxons', TAXONS_INPUT_PATH)
 
 clean_taxons = pd.read_csv(
-    TAXONS_INPUT_PATH
+    TAXONS_INPUT_PATH,compression='gzip'
     )
 
 logger.info('clean_taxons.shape: %s.', clean_taxons.shape)
@@ -310,22 +309,22 @@ except AssertionError:
 # Write out dataframes
 
 write_csv(level1_tagged, 'level1 tagged labelled',
-          LABELLED_LEVEL1_OUTPUT_PATH, logger, compression='gzip')
+          LABELLED_LEVEL1_OUTPUT_PATH, logger)
 
 write_csv(level2_tagged, 'level2 tagged labelled',
-          LABELLED_LEVEL2_OUTPUT_PATH, logger, compression='gzip')
+          LABELLED_LEVEL2_OUTPUT_PATH, logger)
 
 write_csv(labelled, 'labelled',
-          LABELLED_OUTPUT_PATH, logger, compression='gzip')
+          LABELLED_OUTPUT_PATH, logger)
 
 write_csv(filtered, 'filtered',
-          FILTERED_OUTPUT_PATH, logger, compression='gzip')
+          FILTERED_OUTPUT_PATH, logger)
 
 write_csv(content_old_taxons, 'old_taxons',
-          OLD_TAXONS_OUTPUT_PATH, logger, compression='gzip')
+          OLD_TAXONS_OUTPUT_PATH, logger)
 
 write_csv(empty_taxons_not_world, 'empty_taxons_not_world',
-          EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH, logger, compression='gzip')
+          EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH, logger)
 
 write_csv(empty_taxons, 'empty_taxons',
-          EMPTY_TAXONS_OUTPUT_PATH, logger, compression='gzip')
+          EMPTY_TAXONS_OUTPUT_PATH, logger)
