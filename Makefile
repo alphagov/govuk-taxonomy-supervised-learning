@@ -63,7 +63,7 @@ clean :
 	    $(DATADIR)/untagged_content.csv.gz  $(DATADIR)/empty_taxons.csv.gz  \
 	    $(DATADIR)/labelled.csv.gz  $(DATADIR)/filtered.csv.gz  $(DATADIR)/old_taxons.csv.gz  \
 	    $(DATADIR)/labelled_level1.csv.gz  $(DATADIR)/labelled_level2.csv.gz  \
-	    $(DATADIR)/empty_taxons_not_world.csv.gz  $(DATADIR)/new_content.csv.gz 
+	    $(DATADIR)/empty_taxons_not_world.csv.gz  $(DATADIR)/new_content.csv.gz \
 	    data/taxons.json data/content.json
 
 clean_all : clean
