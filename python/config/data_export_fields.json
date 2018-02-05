@@ -10,6 +10,17 @@
     "description",
     "details"
   ],
+  "untagged_content_fields": [
+    "title",
+    "description",
+    "document_type",
+    "first_published_at",
+    "email_document_supertype",
+    "navigation_document_supertype",
+    "publishing_app",
+    "updated_at",
+    "withdrawn_notice"
+  ],
   "taxon_fields": [
     "title",
     "content_id"

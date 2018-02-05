@@ -1,11 +1,17 @@
 from data_extraction import rummager
 from data_extraction import plek
-from data_extraction.helpers import slice, dig
+from data_extraction.helpers import slice, dig, merge
 import requests
 
-def content_links_generator(page_size=1000, rummager_url=plek.find('rummager'), blacklist_document_types=[]):
-    search_results = rummager.Rummager(rummager_url).search_generator(
-        {'reject_content_store_document_type': blacklist_document_types, 'fields': ['link']}, page_size=page_size)
+
+def content_links_generator(page_size=1000,
+                            additional_search_fields = {},
+                            rummager_url=plek.find('rummager'),
+                            blacklist_document_types=[]):
+    search_hash = merge({'reject_content_store_document_type': blacklist_document_types,
+                         'fields': ['link']},
+                        additional_search_fields)
+    search_results = rummager.Rummager(rummager_url).search_generator(search_hash, page_size=page_size)
     return map(lambda h: h.get('link'), search_results)
 
 
@@ -16,6 +22,20 @@ def content_hash_slicer(content_hash, base_fields=[], taxon_fields=[], ppo_field
 
     if taxons:
         result['taxons'] = [slice(taxon, taxon_fields) for taxon in taxons]
+    if ppo:
+        result['primary_publishing_organisation'] = slice(ppo[0], ppo_fields)
+
+    return result
+
+
+def untagged_hash_slicer(content_hash, base_fields=[], ppo_fields=[]):
+    result = slice(content_hash, base_fields)
+
+    logo = dig(content_hash, 'links', 'organisations', 0, 'details', 'logo', 'formatted-title')
+    ppo = dig(content_hash, 'links', 'primary_publishing_organisation')
+
+    if logo:
+        result['logo'] = logo
     if ppo:
         result['primary_publishing_organisation'] = slice(ppo[0], ppo_fields)
 
