@@ -9,14 +9,19 @@ from multiprocessing import Pool
 with open('config/data_export_fields.json') as json_data_file:
     configuration = json.load(json_data_file)
 
+
 content_links_generator = content_export.content_links_generator(
     blacklist_document_types=configuration['blacklist_document_types']
 )
 
+
+slicer = functools.partial(content_export.content_hash_slicer,
+                           base_fields=configuration['base_fields'],
+                           taxon_fields=configuration['taxon_fields'],
+                           ppo_fields=configuration['ppo_fields'])
+
+
 get_content = functools.partial(content_export.get_content,
-                                base_fields=configuration['base_fields'],
-                                taxon_fields=configuration['taxon_fields'],
-                                ppo_fields=configuration['ppo_fields'],
                                 content_store_url=plek.find('draft-content-store'))
 
 
@@ -31,9 +36,8 @@ def taxonomy():
 
 def content():
     pool = Pool(10)
-    content_generator = pool.imap(get_content, content_links_generator, 50)
-    return filter(lambda link: link, content_generator)
-
+    content_generator = pool.imap(get_content, content_links_generator)
+    return filter(lambda link: link, map(slicer, content_generator))
 
 
 def export_content(output="data/content.json"):
@@ -43,8 +47,8 @@ def export_content(output="data/content.json"):
 def export_taxons(output="data/taxons.json"):
     __write_json(output, taxonomy())
 
-
 # PRIVATE
+
 
 def __write_json(filename, generator):
     with open(filename, 'w') as file:

@@ -62,23 +62,24 @@ class GetContent(unittest.TestCase):
         responses.add(responses.GET, "http://example.com/content/base_path", json=content_no_taxon())
         expected = {"base_path": "/base_path", "content_id": "d282d35a-2bd2-4e14-a7a6-a04e6b10520f"}
         response = content_export.get_content('/base_path',
-                                             base_fields = ["base_path", "content_id"],
-                                             content_store_url="http://example.com")
-        self.assertDictEqual(response, expected)
+                                              content_store_url="http://example.com")
+        self.assertEquals(expected.get('base_path'), response.get('base_path'))
+        self.assertEquals(expected.get('content_id'), response.get('content_id'))
 
     @responses.activate
     def test_taxons(self):
         responses.add(responses.GET, "http://example.com/content/base_path", json=content_with_taxons())
         expected = [{"content_id": "237b2e72-c465-42fe-9293-8b6af21713c0"},
                     {"content_id": "8da62d85-47c0-42df-94c4-eaaeac329671"}]
-        response = content_export.get_content('/base_path', content_store_url="http://example.com",
-                                              taxon_fields=["content_id"])
-        self.assertListEqual(response.get('taxons'), expected)
+        response = content_export.get_content('/base_path',
+                                              content_store_url="http://example.com")
+
+        self.assertListEqual(response.get('links').get('taxons'), expected)
 
     @responses.activate
     def test_primary_publishing_organisations(self):
         responses.add(responses.GET, "http://example.com/content/base_path", json=content_with_ppo())
         expected = {"title": "title1"}
-        response = content_export.get_content('/base_path', content_store_url="http://example.com",
-                                              ppo_fields=["title"])
-        self.assertDictEqual(response.get('primary_publishing_organisation'), expected)
+        response = content_export.get_content('/base_path',
+                                              content_store_url="http://example.com")
+        self.assertDictEqual(response.get('links').get('primary_publishing_organisation')[0], expected)
