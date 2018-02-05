@@ -4,8 +4,13 @@ def slice(hash_in, key_list):
 
 def dig(hash_in, *key_list):
     (head, *tail) = key_list
-    value = hash_in.get(head)
-    if len(tail) == 0 or (value is None) or not isinstance(value, dict):
+    if isinstance(head, int) and isinstance(hash_in, list):
+        value = hash_in[head]
+    elif isinstance(head, str) and isinstance(hash_in, dict):
+        value = hash_in.get(head)
+    else:
+        return hash_in
+    if len(tail) == 0:
         return value
     else:
         return dig(value, *tail)
