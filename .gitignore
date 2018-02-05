@@ -8,4 +8,5 @@ data
 .DS_Store
 __pycache__
 */.cache
+client_secret.json
 python/notebooks/ML_notebooks/Graph/
