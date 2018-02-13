@@ -1,7 +1,7 @@
 from data_extraction import content_export
-from data_extraction import taxonomy_query, plek
-from data_extraction import json_arrays
-from data_extraction.helpers import dig
+from data_extraction import taxonomy_query
+from lib import json_arrays, plek
+from lib.helpers import dig
 import functools
 from multiprocessing import Pool
 import gzip

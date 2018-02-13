@@ -1,5 +1,5 @@
 import unittest
-from data_extraction.helpers import dig, slice, merge
+from lib.helpers import dig, slice, merge
 
 
 class TestHelpers(unittest.TestCase):

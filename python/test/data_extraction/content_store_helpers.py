@@ -1,5 +1,5 @@
 import responses, uuid
-from data_extraction import plek
+from lib import plek
 
 
 def content_store_has_item(path, json):

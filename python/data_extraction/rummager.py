@@ -1,6 +1,6 @@
 from itertools import count
-from data_extraction.helpers import merge
-from data_extraction import plek
+from lib.helpers import merge
+from lib import plek
 import requests
 
 

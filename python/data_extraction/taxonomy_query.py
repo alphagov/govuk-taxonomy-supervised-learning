@@ -1,6 +1,6 @@
-from data_extraction import plek
+from lib import plek
 import requests
-from data_extraction.helpers import slice, dig
+from lib.helpers import slice, dig
 
 
 class TaxonomyQuery():
