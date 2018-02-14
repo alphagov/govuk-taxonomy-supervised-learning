@@ -42,7 +42,7 @@ def export_content(output_filename="data/content.json.gz"):
 
 
 def export_filtered_content(input_filename="data/content.json.gz", output_filename="data/filtered_content.json.gz"):
-    slicer = functools.partial(content_export.content_hash_slicer,
+    slicer = functools.partial(content_export.content_dict_slicer,
                                base_fields=configuration['base_fields'],
                                taxon_fields=configuration['taxon_fields'],
                                ppo_fields=configuration['ppo_fields'])
@@ -53,16 +53,16 @@ def export_filtered_content(input_filename="data/content.json.gz", output_filena
 
 
 def export_untagged_content(input_filename="data/content.json.gz", output_filename="data/untagged_content.json.gz"):
-    def __filter_tagged(hash_in):
-        return dig(hash_in, 'links', 'taxons') is None
+    def __filter_tagged(dict_in):
+        return dig(dict_in, 'links', 'taxons') is None
 
-    untagged_hash_slicer = functools.partial(content_export.untagged_hash_slicer,
+    untagged_dict_slicer = functools.partial(content_export.untagged_dict_slicer,
                                              base_fields=configuration['untagged_content_fields'],
                                              ppo_fields=configuration['ppo_fields'])
 
     __transform_content(input_filename=input_filename,
                         output_filename=output_filename,
-                        transform_function=lambda iterator: map(untagged_hash_slicer, filter(__filter_tagged, iterator)))
+                        transform_function=lambda iterator: map(untagged_dict_slicer, filter(__filter_tagged, iterator)))
 
 
 def export_taxons(output_filename="data/taxons.json.gz"):

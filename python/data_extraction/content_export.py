@@ -8,17 +8,17 @@ def content_links_generator(page_size=1000,
                             additional_search_fields = {},
                             rummager_url=plek.find('rummager'),
                             blacklist_document_types=[]):
-    search_hash = merge({'reject_content_store_document_type': blacklist_document_types,
+    search_dict = merge({'reject_content_store_document_type': blacklist_document_types,
                          'fields': ['link']},
                         additional_search_fields)
-    search_results = rummager.Rummager(rummager_url).search_generator(search_hash, page_size=page_size)
+    search_results = rummager.Rummager(rummager_url).search_generator(search_dict, page_size=page_size)
     return map(lambda h: h.get('link'), search_results)
 
 
-def content_hash_slicer(content_hash, base_fields=[], taxon_fields=[], ppo_fields=[]):
-    result = slice(content_hash, base_fields)
-    taxons = dig(content_hash, 'links', 'taxons')
-    ppo = dig(content_hash, 'links', 'primary_publishing_organisation')
+def content_dict_slicer(content_dict, base_fields=[], taxon_fields=[], ppo_fields=[]):
+    result = slice(content_dict, base_fields)
+    taxons = dig(content_dict, 'links', 'taxons')
+    ppo = dig(content_dict, 'links', 'primary_publishing_organisation')
 
     if taxons:
         result['taxons'] = [slice(taxon, taxon_fields) for taxon in taxons]
@@ -28,11 +28,11 @@ def content_hash_slicer(content_hash, base_fields=[], taxon_fields=[], ppo_field
     return result
 
 
-def untagged_hash_slicer(content_hash, base_fields=[], ppo_fields=[]):
-    result = slice(content_hash, base_fields)
+def untagged_dict_slicer(content_dict, base_fields=[], ppo_fields=[]):
+    result = slice(content_dict, base_fields)
 
-    logo = dig(content_hash, 'links', 'organisations', 0, 'details', 'logo', 'formatted-title')
-    ppo = dig(content_hash, 'links', 'primary_publishing_organisation')
+    logo = dig(content_dict, 'links', 'organisations', 0, 'details', 'logo', 'formatted-title')
+    ppo = dig(content_dict, 'links', 'primary_publishing_organisation')
 
     if logo:
         result['logo'] = logo
@@ -44,24 +44,24 @@ def untagged_hash_slicer(content_hash, base_fields=[], ppo_fields=[]):
 
 def get_content(base_path,
                 content_store_url=plek.find('draft-content-store')):
-    content_hash = __get_content_hash(base_path, content_store_url)
+    content_dict = __get_content_dict(base_path, content_store_url)
 
     # Skip this if we don't get back the content we expect, e.g. if
     # the Content Store has redirected the request
-    if content_hash.get('base_path') != base_path:
+    if content_dict.get('base_path') != base_path:
         return {}
 
     # Skip anything without a content_id
-    if 'content_id' not in content_hash:
+    if 'content_id' not in content_dict:
         return {}
 
-    return content_hash
+    return content_dict
 
 
 # PRIVATE
 
 
-def __get_content_hash(path, content_store_url):
+def __get_content_dict(path, content_store_url):
 
     url = "{content_store_url}/content{path}".format(content_store_url=content_store_url, path=path)
     response = requests.get(url)
