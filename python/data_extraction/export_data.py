@@ -26,19 +26,25 @@ def __transform_content(input_filename="data/content.json.gz",
 
 def export_content(output_filename="data/content.json.gz"):
     def __complete_content():
-        get_content = functools.partial(content_export.get_content,
-                                        content_store_url=plek.find('draft-content-store'))
+        get_content = functools.partial(
+            content_export.get_content,
+            content_store_url=plek.find('draft-content-store')
+        )
 
         content_links_generator = content_export.content_links_generator(
-            blacklist_document_types=configuration['blacklist_document_types']
+            blacklist_document_types=configuration[
+                'blacklist_document_types'
+            ]
         )
 
         pool = Pool(10)
         return pool.imap(get_content, content_links_generator)
 
     with gzip.open(output_filename, 'wt') as output_file:
-        json_arrays.write_json(output_file,
-                               filter(lambda link: link, __complete_content()))
+        json_arrays.write_json(
+            output_file,
+            filter(lambda link: link, __complete_content())
+        )
 
 
 def export_filtered_content(input_filename="data/content.json.gz", output_filename="data/filtered_content.json.gz"):
