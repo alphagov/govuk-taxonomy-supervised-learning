@@ -4,6 +4,7 @@ Extract taxon hierarchy from data/taxons.json
 '''
 
 import os
+import argparse
 import pathlib
 import logging
 import logging.config
@@ -20,20 +21,22 @@ logger = logging.getLogger('clean_taxons')
 
 # Get data file locations
 
+parser = argparse.ArgumentParser()
+parser.add_argument("input_file")
+parser.add_argument("output_file")
+
+args = parser.parse_args()
+
 DATADIR = os.getenv('DATADIR')
-TAXON_INPUT_PATH = os.path.join(DATADIR, 'raw_taxons.json')
-TAXON_OUTPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv.gz')
 
 # Convert to uri to satisfy pd.read_json
 
-DATAPATH = pathlib.Path(TAXON_INPUT_PATH).as_uri()
-
-logger.info('Importing taxons from %s as taxons', DATAPATH)
+logger.info('Importing taxons from %s as taxons', args.input_file)
 
 # Load taxons
 
 taxons = pd.read_json(
-    DATAPATH,
+    args.input_file,
     orient='table',
     typ='frame',
     dtype=True,
@@ -221,4 +224,4 @@ logger.debug('Print df_taxons.columns after drop: %s', list(df_taxons.columns.va
 
 # Write out df_taxons to csv using pipeline_functions.df_taxons
 
-write_csv(df_taxons, 'Taxons', TAXON_OUTPUT_PATH, logger)
+write_csv(df_taxons, 'Taxons', args.output_file, logger)
