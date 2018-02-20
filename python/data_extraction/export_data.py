@@ -23,35 +23,34 @@ def __transform_content(input_filename="data/content.json.gz",
             content_generator = json_arrays.read_json(input_file)
             json_arrays.write_json(output_file, transform_function(content_generator))
 
+def __get_all_content():
+    get_content = functools.partial(
+        content_export.get_content,
+        content_store_url=plek.find('draft-content-store')
+    )
+
+    content_links_list = list(
+        content_export.content_links_generator(
+            blacklist_document_types=configuration[
+                'blacklist_document_types'
+            ]
+        )
+    )
+
+    content_links_set = set(content_links_list)
+    duplicate_links = len(content_links_list) - len(content_links_set)
+
+    if duplicate_links > 0:
+        print("{} duplicate links from Rummager".format(duplicate_links))
+
+    pool = Pool(10)
+    return pool.imap(get_content, content_links_set)
 
 def export_content(output_filename="data/content.json.gz"):
-    def __complete_content():
-        get_content = functools.partial(
-            content_export.get_content,
-            content_store_url=plek.find('draft-content-store')
-        )
-
-        content_links_list = list(
-            content_export.content_links_generator(
-                blacklist_document_types=configuration[
-                    'blacklist_document_types'
-                ]
-            )
-        )
-
-        content_links_set = set(content_links_list)
-        duplicate_links = len(content_links_list) - len(content_links_set)
-
-        if duplicate_links > 0:
-            print("{} duplicate links from Rummager".format(duplicate_links))
-
-        pool = Pool(10)
-        return pool.imap(get_content, content_links_set)
-
     with gzip.open(output_filename, 'wt') as output_file:
         json_arrays.write_json(
             output_file,
-            filter(lambda link: link, __complete_content())
+            filter(lambda link: link, __get_all_content())
         )
 
 
