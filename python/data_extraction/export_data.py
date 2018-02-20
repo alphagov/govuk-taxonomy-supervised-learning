@@ -47,12 +47,51 @@ def __get_all_content():
     return pool.imap(get_content, content_links_set)
 
 def export_content(output_filename="data/content.json.gz"):
+    seen_content_ids = set()
+    duplicate_content_ids = []
+
+    def filter_content(content):
+        # This can happen a few ways, for example, if the request to
+        # get the content resulted in a redirect.
+        if not content:
+            return False
+
+        content_id = content['content_id']
+
+        if content_id in seen_content_ids:
+            duplicate_content_ids.append(content_id)
+            return False
+
+        seen_content_ids.add(content_id)
+        return True
+
+    content = filter(filter_content, __get_all_content())
+
     with gzip.open(output_filename, 'wt') as output_file:
-        json_arrays.write_json(
+        # The json package in the stdlib doesn't support dumping a
+        # generator, but it can handle lists, so this class acts as a
+        # go between, making the generator look like a list.
+        class StreamContent(list):
+            def __bool__(self):
+                # The json class tests the truthyness of this object,
+                # so this needs to be overridden to True
+                return True
+
+            def __iter__(self):
+                return content
+
+        json.dump(
+            StreamContent(),
             output_file,
-            filter(lambda link: link, __get_all_content())
+            indent=4,
+            check_circular=False,
+            sort_keys=True,
         )
 
+    duplicate_content_ids_count = len(set(duplicate_content_ids))
+    print("Seen {} duplicate content ids".format(
+        duplicate_content_ids_count
+    ))
 
 def export_filtered_content(input_filename="data/content.json.gz", output_filename="data/filtered_content.json.gz"):
     slicer = functools.partial(content_export.content_dict_slicer,

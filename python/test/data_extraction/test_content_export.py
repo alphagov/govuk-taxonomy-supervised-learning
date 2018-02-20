@@ -16,9 +16,9 @@ class TestContentLinksGenerator(unittest.TestCase):
 class TestGetContent(unittest.TestCase):
 
     @responses.activate
-    def test_empty_dict(self):
+    def test_404_response(self):
         responses.add(responses.GET, "http://example.com/content/base_path", status=404)
-        self.assertDictEqual(content_export.get_content('/base_path', content_store_url="http://example.com"), {})
+        self.assertFalse(content_export.get_content('/base_path', content_store_url="http://example.com"))
 
     @responses.activate
     def test_simple_content(self):
