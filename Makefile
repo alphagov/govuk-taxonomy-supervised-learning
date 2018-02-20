@@ -8,6 +8,11 @@
 # Run `make upload` to upload all final training sets to S3 bucket
 # (note that you will need the necessary write permissions to do this)
 
+# Makefile cheatsheet:
+#
+#   $< means the first prerequsite
+#   $@ means the target
+
 all : taxons content labelled
 taxons : $(DATADIR)/clean_taxons.csv.gz
 content : $(DATADIR)/clean_content.csv.gz
