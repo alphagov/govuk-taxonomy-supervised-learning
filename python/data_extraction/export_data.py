@@ -31,14 +31,22 @@ def export_content(output_filename="data/content.json.gz"):
             content_store_url=plek.find('draft-content-store')
         )
 
-        content_links_generator = content_export.content_links_generator(
-            blacklist_document_types=configuration[
-                'blacklist_document_types'
-            ]
+        content_links_list = list(
+            content_export.content_links_generator(
+                blacklist_document_types=configuration[
+                    'blacklist_document_types'
+                ]
+            )
         )
 
+        content_links_set = set(content_links_list)
+        duplicate_links = len(content_links_list) - len(content_links_set)
+
+        if duplicate_links > 0:
+            print("{} duplicate links from Rummager".format(duplicate_links))
+
         pool = Pool(10)
-        return pool.imap(get_content, content_links_generator)
+        return pool.imap(get_content, content_links_set)
 
     with gzip.open(output_filename, 'wt') as output_file:
         json_arrays.write_json(
