@@ -23,7 +23,7 @@ logger = logging.getLogger('clean_content')
 # Get data file locations
 
 DATADIR = os.getenv('DATADIR')
-CONTENT_INPUT_FILE = 'raw_content.json.gz'
+CONTENT_INPUT_FILE = 'content.json.gz'
 CONTENT_INPUT_PATH = os.path.join(DATADIR, CONTENT_INPUT_FILE)
 
 DOCUMENT_TYPE_FILE = 'document_type_group_lookup.json'
@@ -66,7 +66,7 @@ content = pd.read_json(
 # Check content dataframe
 
 try:
-    assert content.shape[1] == 11
+    assert content.shape[1] == 26
 except AssertionError:
     logger.exception('Incorrect number of input columns')
     raise
@@ -104,6 +104,28 @@ content = pd.merge(
 
 content.loc[content['_merge'] == 'left_only', 'document_type_gp'] = 'other'
 content.drop('_merge', axis=1, inplace=True)
+
+# Add 'taxon' column
+
+logger.info("Creating 'taxon' column")
+
+
+def mapper(x_links):
+    if 'taxons' in x_links:
+        return list(map(lambda x: x['content_id'], x_links['taxons']))
+    else:
+        return []
+
+
+print("BEFORE NA", content['links'].isna().sum(), "DF SIZE", content.shape)
+
+print(content[content['links'].isna()])
+
+content.dropna(subset=['links'], inplace=True)
+
+print("AFTER NA", content['links'].isna().sum(), "DF SIZE", content.shape)
+
+content['taxons'] = content['links'].map(mapper)
 
 
 def is_json(raw_text):
@@ -181,6 +203,8 @@ Iterate over nested json (avoiding recursion), flattening loops.
 logger.info('Extracting title, description, and text from content.')
 
 logger.info('Extracting text from nested json tags (previously body)')
+print("Empty details:",content['details'].isna().sum())
+content.dropna(subset=['details'], inplace=True)
 content['body'] = content['details'].map(get_text)
 logger.debug('Text extracted from body looks like: %s', content['body'][0:10])
 
@@ -292,7 +316,7 @@ logger.debug('content_long.shape: %s', content_long.shape)
 
 logger.info('Extract content_id into taxon_id column.')
 
-content_long = content_long.assign(taxon_id=[d['content_id'] for d in content_long['taxon']])
+content_long = content_long.assign(taxon_id=[element for element in content_long['taxon']])
 
 logger.debug("content_long['taxon'][0:10]: %s", content_long['taxon'][0:10])
 
