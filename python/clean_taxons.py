@@ -4,6 +4,7 @@ Extract taxon hierarchy from data/taxons.json
 '''
 
 import os
+import argparse
 import pathlib
 import logging
 import logging.config
@@ -20,20 +21,22 @@ logger = logging.getLogger('clean_taxons')
 
 # Get data file locations
 
+parser = argparse.ArgumentParser()
+parser.add_argument("input_file")
+parser.add_argument("output_file")
+
+args = parser.parse_args()
+
 DATADIR = os.getenv('DATADIR')
-TAXON_INPUT_PATH = os.path.join(DATADIR, 'raw_taxons.json')
-TAXON_OUTPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv.gz')
 
 # Convert to uri to satisfy pd.read_json
 
-DATAPATH = pathlib.Path(TAXON_INPUT_PATH).as_uri()
-
-logger.info('Importing taxons from %s as taxons', DATAPATH)
+logger.info('Importing taxons from %s as taxons', args.input_file)
 
 # Load taxons
 
 taxons = pd.read_json(
-    DATAPATH,
+    args.input_file,
     orient='table',
     typ='frame',
     dtype=True,
@@ -54,7 +57,7 @@ taxons_notnan = taxons.where(cond=(pd.notnull(taxons)), other=None)
 
 logger.info('Creating child_dict')
 
-child_dict = dict(zip(taxons_notnan['content_id'], 
+child_dict = dict(zip(taxons_notnan['content_id'],
                       taxons_notnan['parent_content_id']))
 
 logger.debug('Printing top 5 keys from child_dict: %s',
@@ -96,17 +99,24 @@ logger.info('The longest taxonpath is %s.',
 logger.info('Separating taxon path into one column per taxon: split_taxonpath_to_cols')
 
 split_taxonpath_to_cols = pd.concat(
-     [taxonpath['content_id'],
-     taxonpath['taxonpath'].apply(pd.Series).loc[:, ::-1]],
+    [
+        taxonpath['content_id'],
+        taxonpath['taxonpath'].apply(pd.Series).loc[:, ::-1]
+    ],
     axis=1
-    )
+)
 
 logger.debug('split_taxonpath_to_cols.shape: %s', split_taxonpath_to_cols)
 
 # TODO: Remove hard coding of split_taxonpath_to_cols below to generalise over deeper taxonomies
 
-split_taxonpath_to_cols.columns = ['content_id', 'level1', 'level2',
-         'level3', 'level4']
+split_taxonpath_to_cols.columns = [
+    'content_id',
+    'level1',
+    'level2',
+    'level3',
+    'level4',
+]
 
 # Move non empty cells to left in grouped columns pandas:
 # https://stackoverflow.com/questions/39361839/move-non-empty-cells-to-left-in-grouped-columns-pandas/39362818#39362818
@@ -161,45 +171,62 @@ logger.debug('df_taxons.shape: %s', df_taxons.shape)
 logger.debug('Printing df_taxons.columns before drop: %s', list(df_taxons.columns.values))
 
 df_taxons.drop(['parent_content_id', 'contenttitle', '_merge'], axis=1, inplace=True)
-df_taxons.rename(columns={'title': 'taxon_name', 'level1_y': 'level1tax_id','level2': 'level2tax_id', 'level3': 'level3tax_id', 'level4': 'level4tax_id'}, inplace=True)
+df_taxons.rename(
+    columns={
+        'title': 'taxon_name',
+        'level1_y': 'level1tax_id',
+        'level2': 'level2tax_id',
+        'level3': 'level3tax_id',
+        'level4': 'level4tax_id'
+    },
+    inplace=True
+)
 
 # For top taxons (level1) ensure that taxon)name is in level1taxon column instead of Nan
 df_taxons['level1taxon'] = df_taxons['level1taxon'].fillna(df_taxons['taxon_name'])
 
 taxonslevels = df_taxons.copy()
 
-# Define the condition 
+# Define the condition
 
 cond = conjunction(
-    taxonslevels['level2taxon'].isna(), 
+    taxonslevels['level2taxon'].isna(),
     taxonslevels['level1taxon'] != taxonslevels['taxon_name']
-    )
+)
 
-# Change the values of the column if the condition is met to the 
+# Change the values of the column if the condition is met to the
 # taxon-name, otherwise the original string
 
-taxonslevels['level2taxon'] = np.where(cond, taxonslevels['taxon_name'], 
-                                       taxonslevels['level2taxon'])
+taxonslevels['level2taxon'] = np.where(
+    cond,
+    taxonslevels['taxon_name'],
+    taxonslevels['level2taxon']
+)
 
 cond = conjunction(
     df_taxons['level2taxon'] != df_taxons['taxon_name'],
     df_taxons['level3taxon'].isna(),
     df_taxons['level2taxon'].notnull()
-    )
+)
 
-taxonslevels['level3taxon'] = np.where(cond, taxonslevels['taxon_name'],
-                                       taxonslevels['level3taxon'])
+taxonslevels['level3taxon'] = np.where(
+    cond,
+    taxonslevels['taxon_name'],
+    taxonslevels['level3taxon']
+)
 
 cond = conjunction(
     df_taxons['level3taxon'] != df_taxons['taxon_name'],
     df_taxons['level2taxon'] != df_taxons['taxon_name'],
     df_taxons['level4taxon'].isna(),
     df_taxons['level3taxon'].notnull()
-    )
+)
 
 taxonslevels['level4taxon'] = np.where(
-    cond, taxonslevels['taxon_name'], taxonslevels['level4taxon']
-    )
+    cond,
+    taxonslevels['taxon_name'],
+    taxonslevels['level4taxon']
+)
 
 # create new column for last taxon level
 taxonslevels['level5taxon'] = np.nan
@@ -208,10 +235,13 @@ cond = conjunction(
     df_taxons['level3taxon'] != df_taxons['taxon_name'],
     df_taxons['level2taxon'] != df_taxons['taxon_name'],
     df_taxons['level4taxon'].notnull()
-    )
+)
 
-taxonslevels['level5taxon'] = np.where(cond, taxonslevels['taxon_name'], 
-                                       taxonslevels['level5taxon'])
+taxonslevels['level5taxon'] = np.where(
+    cond,
+    taxonslevels['taxon_name'],
+    taxonslevels['level5taxon']
+)
 
 # copy the working df back to taxons
 
@@ -221,4 +251,4 @@ logger.debug('Print df_taxons.columns after drop: %s', list(df_taxons.columns.va
 
 # Write out df_taxons to csv using pipeline_functions.df_taxons
 
-write_csv(df_taxons, 'Taxons', TAXON_OUTPUT_PATH, logger)
+write_csv(df_taxons, 'Taxons', args.output_file, logger)

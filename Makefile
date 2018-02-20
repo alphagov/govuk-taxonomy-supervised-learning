@@ -8,6 +8,11 @@
 # Run `make upload` to upload all final training sets to S3 bucket
 # (note that you will need the necessary write permissions to do this)
 
+# Makefile cheatsheet:
+#
+#   $< means the first prerequsite
+#   $@ means the target
+
 all : taxons content labelled
 taxons : $(DATADIR)/clean_taxons.csv.gz
 content : $(DATADIR)/clean_content.csv.gz
@@ -27,8 +32,8 @@ data/export_untagged_content.json.gz : data/content.json.gz
 data/taxons.json.gz:
 	cd python && python3 -u -c "from data_extraction.export_data import export_taxons; export_taxons(output_filename='../data/taxons.json.gz')"
 
-$(DATADIR)/clean_taxons.csv.gz : python/clean_taxons.py $(DATADIR)/raw_taxons.json
-	python3 python/clean_taxons.py
+$(DATADIR)/clean_taxons.csv.gz: $(DATADIR)/taxons.json.gz
+	python3 python/clean_taxons.py $< $@
 
 $(DATADIR)/clean_content.csv.gz : python/clean_content.py $(DATADIR)/raw_content.json.gz \
     $(DATADIR)/document_type_group_lookup.json
