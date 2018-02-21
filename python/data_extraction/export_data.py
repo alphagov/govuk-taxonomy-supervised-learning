@@ -3,6 +3,7 @@ from data_extraction import taxonomy_query
 from lib import json_arrays, plek
 from lib.helpers import dig
 import functools
+import progressbar
 from multiprocessing import Pool
 import gzip
 import json
@@ -29,11 +30,15 @@ def __get_all_content():
         content_store_url=plek.find('draft-content-store')
     )
 
+    progress_bar = progressbar.ProgressBar()
+
     content_links_list = list(
-        content_export.content_links_generator(
-            blacklist_document_types=configuration[
-                'blacklist_document_types'
-            ]
+        progress_bar(
+            content_export.content_links_generator(
+                blacklist_document_types=configuration[
+                    'blacklist_document_types'
+                ]
+            )
         )
     )
 
@@ -44,7 +49,7 @@ def __get_all_content():
         print("{} duplicate links from Rummager".format(duplicate_links))
 
     pool = Pool(10)
-    return pool.imap(get_content, content_links_set)
+    return pool.imap(get_content, content_links_set), len(content_links_set)
 
 def export_content(output_filename="data/content.json.gz"):
     seen_content_ids = set()
@@ -65,7 +70,10 @@ def export_content(output_filename="data/content.json.gz"):
         seen_content_ids.add(content_id)
         return True
 
-    content = filter(filter_content, __get_all_content())
+    content_iterator, count = __get_all_content()
+    content = filter(filter_content, content_iterator)
+
+    progress_bar = progressbar.ProgressBar(max_value=count)
 
     with gzip.open(output_filename, 'wt') as output_file:
         # The json package in the stdlib doesn't support dumping a
@@ -78,7 +86,7 @@ def export_content(output_filename="data/content.json.gz"):
                 return True
 
             def __iter__(self):
-                return content
+                return progress_bar(content)
 
         json.dump(
             StreamContent(),
