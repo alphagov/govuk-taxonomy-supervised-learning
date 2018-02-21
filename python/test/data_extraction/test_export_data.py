@@ -42,7 +42,11 @@ class TestExportData(unittest.TestCase):
     @responses.activate
     def test_export_content(self):
         output = MockIO()
-        responses.add(responses.GET, "http://rummager.dev.gov.uk/search.json", json=content_links)
+        responses.add(
+            responses.GET,
+            "{}/search.json".format(plek.find("rummager")),
+            json=content_links
+        )
         content_store_has_item(content_first['base_path'], json=content_first)
         content_store_has_item(content_second['base_path'], json=content_second)
         with unittest.mock.patch('gzip.open', return_value=output):
