@@ -1,6 +1,6 @@
-from data_extraction import plek
+from lib import plek
 import requests
-from data_extraction.helpers import slice, dig
+from lib.helpers import slice, dig
 
 
 class TaxonomyQuery():
@@ -17,6 +17,20 @@ class TaxonomyQuery():
         root_content_dict = self.__get_content_dict(base_path)
         taxons = dig(root_content_dict, "links", "child_taxons") or []
         return self.__recursive_child_taxons(taxons, root_content_dict['content_id'])
+
+    def taxon_linked_to_root(self, dict):
+        if dict is None:
+            return False
+        links = dict.get("links")
+        if "root_taxon" in links:
+            return True
+        return self.taxon_linked_to_root(dig(links, "parent_taxons", 0))
+
+    def content_linked_to_root(self, content_dict):
+        if dig(content_dict, "links", "root_taxon") is not None:
+            return True
+        taxons = dig(content_dict, "links", "taxons") or []
+        return any(self.taxon_linked_to_root(taxon) for taxon in taxons)
 
     # PRIVATE
 

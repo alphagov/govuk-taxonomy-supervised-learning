@@ -1,5 +1,5 @@
 import responses, uuid
-from data_extraction import plek
+from lib import plek
 
 
 def content_store_has_item(path, json):
@@ -14,7 +14,7 @@ level_one_taxons = {
                 {"base_path": "/taxons/root_taxon",
                  "content_id": "rrrr"}
             ]
-        }
+    }
 }
 
 multi_level_child_taxons = {
@@ -65,6 +65,7 @@ def single_level_child_taxons(root, child_1, child_2):
         }
     }
 
+
 content_with_taxons = {
     "base_path": "/base_path",
     "content_id": "d282d35a-2bd2-4e14-a7a6-a04e6b10520f",
@@ -107,4 +108,68 @@ content_second = {
     "content_id": str(uuid.uuid4()),
     "links": {
     }
+}
+
+content_with_direct_link_to_root_taxon = {
+    "base_path": "/base_path",
+    "content_id": "d282d35a-2bd2-4e14-a7a6-a04e6b10520f",
+    "links": {
+        "root_taxon": [{}]
+    }
+}
+
+content_with_multiple_unconnected_taxons = {
+    "base_path": "/base_path",
+    "content_id": "d282d35a-2bd2-4e14-a7a6-a04e6b10520f",
+    "links": {
+        "taxons": [
+            {
+                "content_id": "377d3d35-4bc8-45a5-99be-d0ac4f25437a",
+                "links": {
+                }
+            },
+            {
+                "content_id": "377d3d35-4bc8-45a5-99be-d0ac4f25437f",
+                "links": {
+                }
+            }
+        ],
+    },
+}
+
+content_with_multiple_taxons = {
+    "base_path": "/base_path",
+    "content_id": "d282d35a-2bd2-4e14-a7a6-a04e6b10520f",
+    "links": {
+        "taxons": [
+            {
+                "content_id": "377d3d35-4bc8-45a5-99be-d0ac4f25437a",
+                "links": {
+                }
+            },
+            {
+                "content_id": "377d3d35-4bc8-45a5-99be-d0ac4f25437f",
+                "links": {
+                    "parent_taxons": [
+                        {
+                            "content_id": "84a394d2-b388-4e4e-904e-136ca3f5dd7d",
+                            "links": {
+                                "parent_taxons": [
+                                    {
+                                        "links": {
+                                            "root_taxon": [
+                                                {
+                                                    "content_id": "f3bbdec2-0e62-4520-a7fd-6ffd5d36e03a",
+                                                }
+                                            ]
+                                        },
+                                    }
+                                ]
+                            },
+                        }
+                    ]
+                },
+            }
+        ],
+    },
 }

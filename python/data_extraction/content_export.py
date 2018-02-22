@@ -1,6 +1,6 @@
 from data_extraction import rummager
-from data_extraction import plek
-from data_extraction.helpers import slice, dig, merge
+from lib import plek
+from lib.helpers import slice, dig, merge
 import requests
 
 

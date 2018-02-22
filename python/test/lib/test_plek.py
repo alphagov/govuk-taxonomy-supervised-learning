@@ -1,5 +1,5 @@
 import unittest
-from data_extraction import plek
+from lib import plek
 from unittest.mock import patch
 
 

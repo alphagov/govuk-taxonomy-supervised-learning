@@ -1,5 +1,5 @@
 import unittest
-from data_extraction import json_arrays
+from lib import json_arrays
 import io
 
 

@@ -5,21 +5,7 @@ from test.data_extraction.content_store_helpers import *
 import responses
 import json
 import io
-
-
-class MockIO:
-    def __init__(self):
-        self.buffer = ""
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, t, v, tr):
-        return self
-
-    def write(self, b):
-        self.buffer = self.buffer + b
-
+from test.lib.mock_io import MockIO
 
 class TestExportData(unittest.TestCase):
     @responses.activate
