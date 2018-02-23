@@ -24,7 +24,13 @@ logger = logging.getLogger('clean_content')
 
 DATADIR = os.getenv('DATADIR')
 CONTENT_INPUT_FILE = 'content.json.gz'
+
 CONTENT_INPUT_PATH = os.path.join(DATADIR, CONTENT_INPUT_FILE)
+
+# If file does not exist.
+if not os.path.exists(CONTENT_INPUT_PATH):
+    logger.exception('%s does not exist', CONTENT_INPUT_PATH)
+    raise IOError("File not found.")
 
 DOCUMENT_TYPE_FILE = 'document_type_group_lookup.json'
 DOCUMENT_TYPE_PATH = os.path.join(DATADIR, DOCUMENT_TYPE_FILE)
@@ -34,13 +40,6 @@ CONTENT_OUTPUT_PATH = os.path.join(DATADIR, CONTENT_OUTPUT_FILE)
 
 UNTAGGED_OUTPUT_FILE = 'untagged_content.csv.gz'
 UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, UNTAGGED_OUTPUT_FILE)
-
-# Assert that the file exists
-try:
-    assert os.path.exists(CONTENT_INPUT_PATH)
-except AssertionError:
-    logger.exception('%s does not exist', CONTENT_INPUT_PATH)
-    raise
 
 # Read in raw content file
 logger.info('Importing data from %s.', CONTENT_INPUT_PATH)
@@ -63,17 +62,12 @@ content = pd.read_json(
     date_unit=None
 )
 
+# Drop some columns.
+
+# content.drop([''],axis=1,inplace=True)
+
 # Check content dataframe
-
-try:
-    assert content.shape[1] == 26
-except AssertionError:
-    logger.exception('Incorrect number of input columns')
-    raise
-
-try:
-    assert content.shape[0] > 100000
-except AssertionError:
+if content.shape[0]>100000:
     logger.warning('Less than 100,000 rows in raw content')
 
 logger.info('Number of rows in raw content: %s.', content.shape[0])
@@ -205,7 +199,9 @@ logger.info('Extracting title, description, and text from content.')
 logger.info('Extracting text from nested json tags (previously body)')
 print("Empty details:",content['details'].isna().sum())
 content.dropna(subset=['details'], inplace=True)
+
 content['body'] = content['details'].map(get_text)
+
 logger.debug('Text extracted from body looks like: %s', content['body'][0:10])
 
 logger.info('Extracting text from description')
@@ -228,8 +224,6 @@ logger.info('content.shape before filtering: %s', content.shape)
 content = content[content.locale == 'en']
 
 logger.info("content.shape after keeping only english content: %s", content.shape)
-
-
 
 # stripout out-of-scope World items
 
@@ -322,26 +316,16 @@ logger.debug("content_long['taxon'][0:10]: %s", content_long['taxon'][0:10])
 
 content_long = content_long.drop(['taxon'], axis=1)
 
-logger.debug('content_long.shape: %s', content_long.shape)
+logger.info('content_long.shape: %s', content_long.shape)
+logger.info('columns %s', content_long.columns.tolist())
+
 logger.debug('content_long.head(): %s', content_long.head())
-
-# Assert content long has 14 columns
-
-logger.info('Assert that column_long has the expected 15 columns.')
-
-try:
-    assert content_long.shape[1] == 15
-except AssertionError:
-    logger.exception('Incorrect number of columns in content_long (labelled content)')
-    raise
 
 # Assert content long has more than 300000 rows
 
 logger.info('Assert that column_long has tmore than 300,000 rows.')
 
-try:
-    assert content_long.shape[0] > 300000
-except AssertionError:
+if content_long.shape[0] > 300000:
     logger.warning('Less than 300,000 rows in content_long (labelled content)')
 
 # Confirm that untagged content is not contained in content_long
@@ -356,12 +340,10 @@ untagged_drop_check = pd.merge(
     indicator=True
 )
 
-try:
-    assert untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0] < 10
-except AssertionError:
+if untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0] < 10:
     logger.exception('There are %s content items in both the untagged and labelled data',
                      untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0])
-    raise
+    raise Exception('Tagged/Untagged overlap')
 
 # Write out to intermediate csv
 
