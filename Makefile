@@ -38,7 +38,7 @@ data/taxons.json.gz:
 $(DATADIR)/clean_taxons.csv.gz: $(DATADIR)/taxons.json.gz
 	python3 python/clean_taxons.py $< $@
 
-$(DATADIR)/clean_content.csv.gz : python/clean_content.py $(DATADIR)/raw_content.json.gz \
+$(DATADIR)/clean_content.csv.gz $(DATADIR)/untagged_content.csv.gz : python/clean_content.py $(DATADIR)/content.json.gz \
     $(DATADIR)/document_type_group_lookup.json
 	python3 python/clean_content.py
 
