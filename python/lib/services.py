@@ -1,3 +1,3 @@
 from statsd import StatsClient
 
-statsd = StatsClient(prefix="stats.gauges.govuk.topic-taxonomy")
+statsd = StatsClient(prefix="govuk.topic-taxonomy")
