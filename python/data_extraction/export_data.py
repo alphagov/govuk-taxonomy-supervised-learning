@@ -3,6 +3,7 @@ from data_extraction import taxonomy_query
 from lib import json_arrays, plek
 from lib.helpers import dig
 import functools
+import progressbar
 from multiprocessing import Pool
 import gzip
 import json
@@ -23,23 +24,82 @@ def __transform_content(input_filename="data/content.json.gz",
             content_generator = json_arrays.read_json(input_file)
             json_arrays.write_json(output_file, transform_function(content_generator))
 
+def __get_all_content():
+    get_content = functools.partial(
+        content_export.get_content,
+        content_store_url=plek.find('draft-content-store')
+    )
+
+    progress_bar = progressbar.ProgressBar()
+
+    content_links_list = list(
+        progress_bar(
+            content_export.content_links_generator(
+                blacklist_document_types=configuration[
+                    'blacklist_document_types'
+                ]
+            )
+        )
+    )
+
+    content_links_set = set(content_links_list)
+    duplicate_links = len(content_links_list) - len(content_links_set)
+
+    if duplicate_links > 0:
+        print("{} duplicate links from Rummager".format(duplicate_links))
+
+    pool = Pool(10)
+    return pool.imap(get_content, content_links_set), len(content_links_set)
 
 def export_content(output_filename="data/content.json.gz"):
-    def __complete_content():
-        get_content = functools.partial(content_export.get_content,
-                                        content_store_url=plek.find('draft-content-store'))
+    seen_content_ids = set()
+    duplicate_content_ids = []
 
-        content_links_generator = content_export.content_links_generator(
-            blacklist_document_types=configuration['blacklist_document_types']
-        )
+    def filter_content(content):
+        # This can happen a few ways, for example, if the request to
+        # get the content resulted in a redirect.
+        if not content:
+            return False
 
-        pool = Pool(10)
-        return pool.imap(get_content, content_links_generator)
+        content_id = content['content_id']
+
+        if content_id in seen_content_ids:
+            duplicate_content_ids.append(content_id)
+            return False
+
+        seen_content_ids.add(content_id)
+        return True
+
+    content_iterator, count = __get_all_content()
+    content = filter(filter_content, content_iterator)
+
+    progress_bar = progressbar.ProgressBar(max_value=count)
 
     with gzip.open(output_filename, 'wt') as output_file:
-        json_arrays.write_json(output_file,
-                               filter(lambda link: link, __complete_content()))
+        # The json package in the stdlib doesn't support dumping a
+        # generator, but it can handle lists, so this class acts as a
+        # go between, making the generator look like a list.
+        class StreamContent(list):
+            def __bool__(self):
+                # The json class tests the truthyness of this object,
+                # so this needs to be overridden to True
+                return True
 
+            def __iter__(self):
+                return progress_bar(content)
+
+        json.dump(
+            StreamContent(),
+            output_file,
+            indent=4,
+            check_circular=False,
+            sort_keys=True,
+        )
+
+    duplicate_content_ids_count = len(set(duplicate_content_ids))
+    print("Seen {} duplicate content ids".format(
+        duplicate_content_ids_count
+    ))
 
 def export_filtered_content(input_filename="data/content.json.gz", output_filename="data/filtered_content.json.gz"):
     slicer = functools.partial(content_export.content_dict_slicer,

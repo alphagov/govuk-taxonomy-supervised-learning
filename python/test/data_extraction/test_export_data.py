@@ -38,7 +38,7 @@ class TestExportData(unittest.TestCase):
         with unittest.mock.patch('gzip.open', return_value=output):
             export_data.export_content()
             expected = [content_first, content_second]
-            self.assertEqual(expected, json.loads(output.buffer))
+            self.assertCountEqual(expected, json.loads(output.buffer))
 
     def test_export_filtered_content(self):
         input_string = "[" + json.dumps(content_with_taxons) + ",\n" + json.dumps(content_without_taxons) + "\n]"

@@ -46,14 +46,17 @@ def get_content(base_path,
                 content_store_url=plek.find('draft-content-store')):
     content_dict = __get_content_dict(base_path, content_store_url)
 
+    if not content_dict:
+        return False
+
     # Skip this if we don't get back the content we expect, e.g. if
     # the Content Store has redirected the request
     if content_dict.get('base_path') != base_path:
-        return {}
+        return False
 
     # Skip anything without a content_id
     if 'content_id' not in content_dict:
-        return {}
+        return False
 
     return content_dict
 
@@ -68,4 +71,4 @@ def __get_content_dict(path, content_store_url):
     if response.status_code == 200:
         return requests.get(url).json()
     else:
-        return {}
+        return False
