@@ -8,6 +8,8 @@ import os
 import pathlib
 from collections import OrderedDict
 
+from data_extraction.taxonomy_query import TaxonomyQuery
+
 import pandas as pd
 import numpy as np
 from lxml import html
@@ -104,9 +106,11 @@ content.drop('_merge', axis=1, inplace=True)
 
 logger.info("Creating 'taxons' column.")
 
+taxonomy_query = TaxonomyQuery()
+
 
 def mapper(x_links):
-    if 'taxons' in x_links:
+    if taxonomy_query.content_linked_to_root({'links': x_links}):
         return list(map(lambda x: x['content_id'], x_links['taxons']))
     else:
         return np.NaN
