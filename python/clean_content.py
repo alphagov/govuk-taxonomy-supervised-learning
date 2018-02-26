@@ -9,6 +9,7 @@ import pathlib
 from collections import OrderedDict
 
 import pandas as pd
+import numpy as np
 from lxml import html
 from pandas.io.json import json_normalize
 
@@ -67,7 +68,7 @@ content = pd.read_json(
 # content.drop([''],axis=1,inplace=True)
 
 # Check content dataframe
-if content.shape[0]>100000:
+if not content.shape[0]>100000:
     logger.warning('Less than 100,000 rows in raw content')
 
 logger.info('Number of rows in raw content: %s.', content.shape[0])
@@ -101,25 +102,32 @@ content.drop('_merge', axis=1, inplace=True)
 
 # Add 'taxon' column
 
-logger.info("Creating 'taxon' column")
+logger.info("Creating 'taxons' column.")
 
 
 def mapper(x_links):
     if 'taxons' in x_links:
         return list(map(lambda x: x['content_id'], x_links['taxons']))
     else:
-        return []
+        return np.NaN
 
-
-print("BEFORE NA", content['links'].isna().sum(), "DF SIZE", content.shape)
-
-print(content[content['links'].isna()])
 
 content.dropna(subset=['links'], inplace=True)
 
-print("AFTER NA", content['links'].isna().sum(), "DF SIZE", content.shape)
-
 content['taxons'] = content['links'].map(mapper)
+
+
+logger.info("Creating 'primary_publishing_organisation' column.")
+
+
+def pub_mapper(x_links):
+    if 'primary_publishing_organisation' in x_links:
+        return x_links['primary_publishing_organisation'][0]['title']
+    else:
+        return np.NaN
+
+
+content['primary_publishing_organisation'] = content['links'].map(pub_mapper)
 
 
 def is_json(raw_text):
@@ -325,7 +333,7 @@ logger.debug('content_long.head(): %s', content_long.head())
 
 logger.info('Assert that column_long has tmore than 300,000 rows.')
 
-if content_long.shape[0] > 300000:
+if not content_long.shape[0] > 300000:
     logger.warning('Less than 300,000 rows in content_long (labelled content)')
 
 # Confirm that untagged content is not contained in content_long
@@ -340,7 +348,7 @@ untagged_drop_check = pd.merge(
     indicator=True
 )
 
-if untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0] < 10:
+if not untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0] < 10:
     logger.exception('There are %s content items in both the untagged and labelled data',
                      untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0])
     raise Exception('Tagged/Untagged overlap')
