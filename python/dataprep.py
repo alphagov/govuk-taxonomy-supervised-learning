@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import pandas as pd
 import numpy as np
 import os
@@ -60,7 +62,7 @@ multilabel = (labelled_level2.pivot_table(index=['content_id',
               )
 
 print('labelled_level2 shape: {}'.format(labelled_level2.shape))
-print('pivot table shape (no duplicates): {} '.format(multilabel.shape))
+print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
 
 multilabel.columns.astype('str')
 
