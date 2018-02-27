@@ -13,6 +13,7 @@ from lxml import html
 from pandas.io.json import json_normalize
 
 from pipeline_functions import extract_text, write_csv
+from tokenizing import create_and_save_tokenizer
 
 # Setup pipeline logging
 
