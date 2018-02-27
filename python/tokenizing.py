@@ -1,3 +1,5 @@
+# coding: utf-8
+
 from keras.preprocessing.text import Tokenizer
 
 import json
