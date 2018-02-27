@@ -216,6 +216,28 @@ content = content[content.document_type != 'travel_advice']
 logger.info('content shape after removing doctypes related to world %s', content.shape)
 
 
+#TOKENIZE ALL content befire splitting into labelled/unlabelled
+
+create_and_save_tokenizer(
+    content['combined_text'], 
+    num_words=20000, 
+    outfilename=os.path.join(DATADIR, "combined_text_tokenizer.json")
+)
+
+create_and_save_tokenizer(
+    content['title'], 
+    num_words=10000, 
+    outfilename=os.path.join(DATADIR, "title_tokenizer.json")
+)
+
+create_and_save_tokenizer(
+    content['description'], 
+    num_words=10000, 
+    outfilename=os.path.join(DATADIR, "description_tokenizer.json")
+)
+
+
+
 # Identify and select untagged content items
 
 logger.info('Separating untagged content')
