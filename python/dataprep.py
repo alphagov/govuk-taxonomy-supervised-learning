@@ -267,6 +267,7 @@ def split(data_to_split, split_indices):
 
 x_train, x_dev, x_test = split(combined_text_sequences_padded, splits)
 x_resampled = split(combined_text_sequences_padded, re_split)[0]
+x_train = np.concatenate([x_train, x_resampled], axis=0)
 
 meta_train, meta_dev, meta_test = split(meta, splits)
 meta_resampled = split(meta, re_split)[0]
