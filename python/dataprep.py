@@ -10,6 +10,9 @@ import tokenizing
 from keras.preprocessing.sequence import pad_sequences
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from keras.utils import to_categorical
+from sklearn.exceptions import DataConversionWarning
+
+warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
 DATADIR = os.getenv('DATADIR')
 
