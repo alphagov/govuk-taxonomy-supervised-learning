@@ -11,10 +11,10 @@ def create_and_save_tokenizer(data, num_words, outfilename):
     tokenizer.fit_on_texts(data)
 
     tokenizer_dict = {
-        "word_counts" : list(tokenizer.word_counts.items()), 
-        "word_docs" : tokenizer.word_docs,
-        "word_index" : tokenizer.word_index, 
-        "document_count" : tokenizer.document_count
+        "word_counts": list(tokenizer.word_counts.items()),
+        "word_docs": tokenizer.word_docs,
+        "word_index": tokenizer.word_index,
+        "document_count": tokenizer.document_count
     }
 
     with open(outfilename, 'w') as outfile:
