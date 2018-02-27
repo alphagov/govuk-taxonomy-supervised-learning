@@ -82,20 +82,17 @@ del binary_multilabel.columns.name
 # - Development data = 10%
 # - Test data = 10%
 
-nb_samples_before_resampling = binary_multilabel.shape[0]
+size_bef_resample = binary_multilabel.shape[0]
 
-nb_test_samples = int(0.1 * nb_samples_before_resampling)  # test split
-print('nb_test samples:', nb_test_samples)
+size_train = int(0.8 * size_bef_resample)  # train split
+print('Size of train set:', size_train)
 
-nb_dev_samples = int(0.2 * nb_samples_before_resampling)  # dev split
-print('nb_dev samples:', nb_dev_samples)
-
-nb_training_samples = int(0.8 * nb_samples_before_resampling)  # train split
-print('nb_training samples:', nb_training_samples)
+size_dev = int(0.1 * size_bef_resample)  # test split
+print('Size of dev/test sets:', size_dev)
 
 # extract indices of training samples, which are to be upsampled
 
-training_indices = [binary_multilabel.index[i][0] for i in range(0, nb_training_samples)]
+training_indices = [binary_multilabel.index[i][0] for i in range(0, size_train)]
 
 upsampled_training = pd.DataFrame()
 last_taxon = len(binary_multilabel.columns) + 1
@@ -247,8 +244,12 @@ description_onehot = tokenizer_title.sequences_to_matrix(description_sequences)
 # - Training data = 80%
 # - Development data = 10%
 # - Test data = 10%
-nb_samples_after_resampling = balanced_df.shape[0]
-nb_extra_resamples = nb_samples_after_resampling - nb_samples_before_resampling
+
+total_size = balanced_df.shape[0]
+end_dev = size_train + size_dev
+
+splits = [(0, size_train), (size_train, end_dev), (end_dev, size_bef_resample)]
+re_split = [(size_bef_resample, total_size)]
 
 
 def split(data_to_split, split_indices):
@@ -257,3 +258,23 @@ def split(data_to_split, split_indices):
     for (start, end) in split_indices:
         list_of_split_data_subsets.append(data_to_split[start:end])
     return tuple(list_of_split_data_subsets)
+
+
+x_train, x_dev, x_test = split(combined_text_sequences_padded, splits)
+x_resampled = split(combined_text_sequences_padded, re_split)[0]
+
+meta_train, meta_dev, meta_test = split(meta, splits)
+meta_resampled = split(meta, re_split)[0]
+meta_train = np.concatenate([meta_train, meta_resampled], axis=0)
+
+title_train, title_dev, title_test = split(title_onehot, splits)
+title_resampled = split(title_onehot, re_split)[0]
+title_train = np.concatenate([title_train, title_resampled], axis=0)
+
+desc_train, desc_dev, desc_test = split(description_onehot, splits)
+desc_resampled = split(description_onehot, re_split)[0]
+desc_train = np.concatenate([desc_train, desc_resampled], axis=0)
+
+y_train, y_dev, y_test = split(binary_multilabel, splits)
+y_resampled = split(binary_multilabel, re_split)[0]
+y_train = np.concatenate([y_train, y_resampled], axis=0)
