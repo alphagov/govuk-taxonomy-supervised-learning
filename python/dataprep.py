@@ -12,7 +12,9 @@ labelled_level2 = pd.read_csv(
 	compression='gzip'
 )
 
-# Metadata
+# ******* Metadata ***************
+# ********************************
+
 #extract content_id index to df
 meta_df = pd.DataFrame(balanced_df['content_id'])
 meta_varlist = ['document_type',
@@ -43,8 +45,14 @@ for metavar in meta_varlist:
         print(metavar)
         dict_of_onehot_encodings[metavar] = to_cat_to_hot(metavar)
 
+#First_published_at: 
+#Convert to timestamp, then scale between 0 and 1 so same weight as binary vars
 meta_df['first_published_at'] = pd.to_datetime(meta_df['first_published_at'])
+first_published = np.array(meta1['first_published_at'])
+					.reshape(meta1['first_published_at'].shape[0], 1)
 
+scaler = MinMaxScaler()
+first_published_scaled = scaler.fit_transform(first_published)
 
 
 last_year = np.where(
@@ -74,6 +82,8 @@ meta = np.concatenate((dict_of_encodings['document_type'],
                       olderthan5), 
                               axis=1)
 
+# **** TOKENIZE TEXT ********************
+# ************************************
 
 # Load tokenizers, fitted on both labelled and unlabelled data from file
 # created in clean_content.py
