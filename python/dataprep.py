@@ -283,3 +283,10 @@ desc_train = np.concatenate([desc_train, desc_resampled], axis=0)
 y_train, y_dev, y_test = split(binary_multilabel, splits)
 y_resampled = split(binary_multilabel, re_split)[0]
 y_train = np.concatenate([y_train, y_resampled], axis=0)
+
+np.savez_compressed(os.path.join(DATADIR,'train_arrays.npz'),
+                    x=x_train,
+                    meta=meta_train,
+                    title=title_train,
+                    desc=desc_train,
+                    y=y_train)
