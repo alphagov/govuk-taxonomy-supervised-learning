@@ -209,14 +209,19 @@ meta = np.concatenate((dict_of_onehot_encodings['document_type'],
 # Load tokenizers, fitted on both labelled and unlabelled data from file
 # created in clean_content.py
 
-tokenizer_combined_text = tokenizing.load_tokenizer_from_file("combined_text_tokenizer.json")
-tokenizer_title = tokenizing.load_tokenizer_from_file("title_tokenizer.json")
-tokenizer_description = tokenizing.load_tokenizer_from_file("description_tokenizer.json")
+tokenizer_combined_text = tokenizing.\
+    load_tokenizer_from_file(os.path.join(DATADIR, "combined_text_tokenizer.json"))
+
+tokenizer_title = tokenizing.\
+    load_tokenizer_from_file(os.path.join(DATADIR,"title_tokenizer.json"))
+
+tokenizer_description = tokenizing.\
+    load_tokenizer_from_file(os.path.join(DATADIR, "description_tokenizer.json"))
 
 # Prepare combined text data for input into embedding layer
 
 combined_text_sequences = tokenizer_combined_text.texts_to_sequences(
-    balanced_df['combined_text']
+    balanced_df.index.get_level_values('combined_text')
 )
 
 combined_text_sequences_padded = pad_sequences(
@@ -230,16 +235,16 @@ combined_text_sequences_padded = pad_sequences(
 # to be fed in after the flatten layer (through fully connected layers)
 
 title_sequences = tokenizer_title.texts_to_sequences(
-    balanced_df['title']
+    balanced_df.index.get_level_values('title')
 )
 
 title_onehot = tokenizer_title.sequences_to_matrix(title_sequences)
 
-description_sequences = tokenizer_title.texts_to_sequences(
-    balanced_df['description']
+description_sequences = tokenizer_description.texts_to_sequences(
+    balanced_df.index.get_level_values('description')
 )
 
-description_onehot = tokenizer_title.sequences_to_matrix(description_sequences)
+description_onehot = tokenizer_description.sequences_to_matrix(description_sequences)
 
 # ******* TRAIN/DEV/TEST SPLIT DATA ****************
 # **************************************************
