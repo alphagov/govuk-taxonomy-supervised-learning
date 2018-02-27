@@ -306,3 +306,5 @@ np.savez_compressed(os.path.join(DATADIR,'test_arrays.npz'),
                     desc=desc_test,
                     y=y_test)
 
+id_train, id_dev, id_test = split(meta_df['content_id'], splits)
+np.savez_compressed(os.path.join(DATADIR,'content_combo.npz'), train=id_train, dev=id_dev, test=id_test)
