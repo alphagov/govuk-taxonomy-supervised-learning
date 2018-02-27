@@ -132,9 +132,8 @@ def pub_mapper(x_links):
 
 content['primary_publishing_organisation'] = content['links'].map(pub_mapper)
 
-rm = ['analytics_identifier', 'content_purpose_document_supertype', 'email_document_supertype',
-      'links', 'redirects', 'rendering_app', 'schema_name',
-      'search_user_need_document_supertype', 'user_journey_document_supertype', 'withdrawn_notice']
+rm = ['analytics_identifier', 'links', 'need_ids', 'phase', 'publishing_request_id', 'redirects', 'rendering_app',
+      'schema_name', 'withdrawn_notice']
 
 logger.info("Dropping %s columns.", len(rm))
 
@@ -212,6 +211,7 @@ Iterate over nested json (avoiding recursion), flattening loops.
                 ttext += " " + child[key]
     return ttext
 
+
 # Filter out content not in english (locale =='en')
 
 logger.info('Filtering out non-english documents')
@@ -251,7 +251,6 @@ logger.debug('Text extracted from title looks like: %s', content['title'][0:10])
 
 logger.info('Concatenating title, description, and text.')
 content['combined_text'] = content['title'] + ' ' + content['description'] + ' ' + content['body']
-
 
 # Identify and select untagged content items
 
