@@ -291,3 +291,18 @@ np.savez_compressed(os.path.join(DATADIR,'train_arrays.npz'),
                     title=title_train,
                     desc=desc_train,
                     y=y_train)
+
+np.savez_compressed(os.path.join(DATADIR,'dev_arrays.npz'),
+                    x=x_dev,
+                    meta=meta_dev,
+                    title=title_dev,
+                    desc=desc_dev,
+                    y=y_dev)
+
+np.savez_compressed(os.path.join(DATADIR,'test_arrays.npz'),
+                    x=x_test,
+                    meta=meta_test,
+                    title=title_test,
+                    desc=desc_test,
+                    y=y_test)
+
