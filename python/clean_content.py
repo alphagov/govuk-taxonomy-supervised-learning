@@ -206,7 +206,6 @@ content = content[content.locale == 'en']
 logger.info("content.shape after keeping only english content: %s", content.shape)
 
 
-
 # stripout out-of-scope World items
 
 logger.info('content shape before removing doctypes related to world %s', content.shape)
@@ -216,7 +215,8 @@ content = content[content.document_type != 'travel_advice']
 logger.info('content shape after removing doctypes related to world %s', content.shape)
 
 
-#TOKENIZE ALL content befire splitting into labelled/unlabelled
+# TOKENIZE ALL content before splitting into labelled/unlabelled
+logger.info('tokenizing combined_text')
 
 create_and_save_tokenizer(
     content['combined_text'], 
@@ -224,11 +224,15 @@ create_and_save_tokenizer(
     outfilename=os.path.join(DATADIR, "combined_text_tokenizer.json")
 )
 
+logger.info('tokenizing title')
+
 create_and_save_tokenizer(
     content['title'], 
     num_words=10000, 
     outfilename=os.path.join(DATADIR, "title_tokenizer.json")
 )
+
+logger.info('tokenizing description')
 
 create_and_save_tokenizer(
     content['description'], 
