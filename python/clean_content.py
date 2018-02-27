@@ -242,7 +242,6 @@ create_and_save_tokenizer(
 )
 
 
-
 # Identify and select untagged content items
 
 logger.info('Separating untagged content')
