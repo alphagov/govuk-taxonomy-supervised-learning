@@ -82,12 +82,12 @@ del binary_multilabel.columns.name
 # - Development data = 10%
 # - Test data = 10%
 
-size_bef_resample = binary_multilabel.shape[0]
+size_before_resample = binary_multilabel.shape[0]
 
-size_train = int(0.8 * size_bef_resample)  # train split
+size_train = int(0.8 * size_before_resample)  # train split
 print('Size of train set:', size_train)
 
-size_dev = int(0.1 * size_bef_resample)  # test split
+size_dev = int(0.1 * size_before_resample)  # test split
 print('Size of dev/test sets:', size_dev)
 
 # extract indices of training samples, which are to be upsampled
@@ -205,7 +205,7 @@ meta = np.concatenate((dict_of_onehot_encodings['document_type'],
 
 # Load tokenizers, fitted on both labelled and unlabelled data from file
 # created in clean_content.py
-
+print('loading tokenizers')
 tokenizer_combined_text = tokenizing.\
     load_tokenizer_from_file(os.path.join(DATADIR, "combined_text_tokenizer.json"))
 
@@ -216,11 +216,12 @@ tokenizer_description = tokenizing.\
     load_tokenizer_from_file(os.path.join(DATADIR, "description_tokenizer.json"))
 
 # Prepare combined text data for input into embedding layer
-
+print('converting combined text to sequences')
 combined_text_sequences = tokenizer_combined_text.texts_to_sequences(
     balanced_df.index.get_level_values('combined_text')
 )
 
+print('padding combined text sequences')
 combined_text_sequences_padded = pad_sequences(
     combined_text_sequences,
     maxlen=1000,  # MAX_SEQUENCE_LENGTH
@@ -231,16 +232,20 @@ combined_text_sequences_padded = pad_sequences(
 # which are one-hot encoded for the 10,000 most common words
 # to be fed in after the flatten layer (through fully connected layers)
 
+print('converting title text to sequences')
 title_sequences = tokenizer_title.texts_to_sequences(
     balanced_df.index.get_level_values('title')
 )
 
+print('one-hot encoding title sequences')
 title_onehot = tokenizer_title.sequences_to_matrix(title_sequences)
 
+print('converting description text to sequences')
 description_sequences = tokenizer_description.texts_to_sequences(
     balanced_df.index.get_level_values('description')
 )
 
+print('one-hot encoding description sequences')
 description_onehot = tokenizer_description.sequences_to_matrix(description_sequences)
 
 # ******* TRAIN/DEV/TEST SPLIT DATA ****************
@@ -250,11 +255,16 @@ description_onehot = tokenizer_description.sequences_to_matrix(description_seque
 # - Development data = 10%
 # - Test data = 10%
 
-total_size = balanced_df.shape[0]
+print('train/dev/test splitting')
+size_after_resample = balanced_df.shape[0]
 end_dev = size_train + size_dev
 
-splits = [(0, size_train), (size_train, end_dev), (end_dev, size_bef_resample)]
-re_split = [(size_bef_resample, total_size)]
+# assign the indices for separating the original (pre-sampled) data into
+# train/dev/test
+splits = [(0, size_train), (size_train, end_dev), (end_dev, size_before_resample)]
+
+# assign the indices for separating out the resampled training data
+resampled_split = [(size_before_resample, size_after_resample)]
 
 
 def split(data_to_split, split_indices):
@@ -265,26 +275,30 @@ def split(data_to_split, split_indices):
     return tuple(list_of_split_data_subsets)
 
 
+# extract arrays as subsets of original text data
 x_train, x_dev, x_test = split(combined_text_sequences_padded, splits)
-x_resampled = split(combined_text_sequences_padded, re_split)[0]
+# extract array of all resampled training text data
+x_resampled = split(combined_text_sequences_padded, resampled_split)[0]
+# append resampled data to original training subset
 x_train = np.concatenate([x_train, x_resampled], axis=0)
 
 meta_train, meta_dev, meta_test = split(meta, splits)
-meta_resampled = split(meta, re_split)[0]
+meta_resampled = split(meta, resampled_split)[0]
 meta_train = np.concatenate([meta_train, meta_resampled], axis=0)
 
 title_train, title_dev, title_test = split(title_onehot, splits)
-title_resampled = split(title_onehot, re_split)[0]
+title_resampled = split(title_onehot, resampled_split)[0]
 title_train = np.concatenate([title_train, title_resampled], axis=0)
 
 desc_train, desc_dev, desc_test = split(description_onehot, splits)
-desc_resampled = split(description_onehot, re_split)[0]
+desc_resampled = split(description_onehot, resampled_split)[0]
 desc_train = np.concatenate([desc_train, desc_resampled], axis=0)
 
 y_train, y_dev, y_test = split(binary_multilabel, splits)
-y_resampled = split(binary_multilabel, re_split)[0]
+y_resampled = split(binary_multilabel, resampled_split)[0]
 y_train = np.concatenate([y_train, y_resampled], axis=0)
 
+print('saving arrays')
 np.savez_compressed(os.path.join(DATADIR,'train_arrays.npz'),
                     x=x_train,
                     meta=meta_train,
