@@ -16,6 +16,7 @@ from lxml import html
 from pandas.io.json import json_normalize
 
 from pipeline_functions import extract_text, write_csv
+from tokenizing import create_and_save_tokenizer
 
 # Setup pipeline logging
 
@@ -251,6 +252,32 @@ logger.debug('Text extracted from title looks like: %s', content['title'][0:10])
 
 logger.info('Concatenating title, description, and text.')
 content['combined_text'] = content['title'] + ' ' + content['description'] + ' ' + content['body']
+
+# TOKENIZE ALL content before splitting into labelled/unlabelled
+logger.info('tokenizing combined_text')
+
+create_and_save_tokenizer(
+    content['combined_text'], 
+    num_words=20000, 
+    outfilename=os.path.join(DATADIR, "combined_text_tokenizer.json")
+)
+
+logger.info('tokenizing title')
+
+create_and_save_tokenizer(
+    content['title'], 
+    num_words=10000, 
+    outfilename=os.path.join(DATADIR, "title_tokenizer.json")
+)
+
+logger.info('tokenizing description')
+
+create_and_save_tokenizer(
+    content['description'], 
+    num_words=10000, 
+    outfilename=os.path.join(DATADIR, "description_tokenizer.json")
+)
+
 
 # Identify and select untagged content items
 
