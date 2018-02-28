@@ -353,10 +353,5 @@ np.savez(os.path.join(DATADIR,'test_arrays.npz'),
 
 id_train, id_dev, id_test = split(meta_df['content_id'], splits)
 
-id_train = sparse.csr_matrix(id_train)
-id_dev = sparse.csr_matrix(id_dev)
-id_test = sparse.csr_matrix(id_test)
-
-
 print('saving content_id arrays')
-np.savez_compressed(os.path.join(DATADIR,'content_id_arrays.npz'), train=id_train, dev=id_dev, test=id_test)
+np.savez(os.path.join(DATADIR,'content_id_arrays.npz'), train=id_train, dev=id_dev, test=id_test)
