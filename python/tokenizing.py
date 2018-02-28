@@ -14,7 +14,8 @@ def create_and_save_tokenizer(data, num_words, outfilename):
         "word_counts": list(tokenizer.word_counts.items()),
         "word_docs": tokenizer.word_docs,
         "word_index": tokenizer.word_index,
-        "document_count": tokenizer.document_count
+        "document_count": tokenizer.document_count,
+        "index_docs": tokenizer.index_docs
     }
 
     with open(outfilename, 'w') as outfile:
@@ -32,5 +33,6 @@ def load_tokenizer_from_file(filename):
     tokenizer.word_docs = tokenizer_data['word_docs']
     tokenizer.word_index = tokenizer_data['word_index']
     tokenizer.document_count = tokenizer_data['document_count']
+    tokenizer.index_docs = tokenizer_data['index_docs']
 
     return tokenizer
