@@ -1,0 +1,13 @@
+#!/bin/sh
+
+rm -rf ./venv
+virtualenv --python=python3 --no-site-packages ./venv
+export VIRTUAL_ENV="$PWD/venv"
+export PATH="$PWD/venv/bin:$PATH"
+pip3 install --upgrade pip
+
+make pip_install
+
+make clean
+make data/taxons.json.gz
+make data/content.json.gz
