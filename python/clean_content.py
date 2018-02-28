@@ -8,7 +8,10 @@ import os
 import pathlib
 from collections import OrderedDict
 
+from data_extraction.taxonomy_query import TaxonomyQuery
+
 import pandas as pd
+import numpy as np
 from lxml import html
 from pandas.io.json import json_normalize
 
@@ -24,8 +27,14 @@ logger = logging.getLogger('clean_content')
 # Get data file locations
 
 DATADIR = os.getenv('DATADIR')
-CONTENT_INPUT_FILE = 'raw_content.json.gz'
+CONTENT_INPUT_FILE = 'content.json.gz'
+
 CONTENT_INPUT_PATH = os.path.join(DATADIR, CONTENT_INPUT_FILE)
+
+# If file does not exist.
+if not os.path.exists(CONTENT_INPUT_PATH):
+    logger.exception('%s does not exist', CONTENT_INPUT_PATH)
+    raise IOError("File not found.")
 
 DOCUMENT_TYPE_FILE = 'document_type_group_lookup.json'
 DOCUMENT_TYPE_PATH = os.path.join(DATADIR, DOCUMENT_TYPE_FILE)
@@ -35,13 +44,6 @@ CONTENT_OUTPUT_PATH = os.path.join(DATADIR, CONTENT_OUTPUT_FILE)
 
 UNTAGGED_OUTPUT_FILE = 'untagged_content.csv.gz'
 UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, UNTAGGED_OUTPUT_FILE)
-
-# Assert that the file exists
-try:
-    assert os.path.exists(CONTENT_INPUT_PATH)
-except AssertionError:
-    logger.exception('%s does not exist', CONTENT_INPUT_PATH)
-    raise
 
 # Read in raw content file
 logger.info('Importing data from %s.', CONTENT_INPUT_PATH)
@@ -64,17 +66,12 @@ content = pd.read_json(
     date_unit=None
 )
 
+# Drop some columns.
+
+# content.drop([''],axis=1,inplace=True)
+
 # Check content dataframe
-
-try:
-    assert content.shape[1] == 11
-except AssertionError:
-    logger.exception('Incorrect number of input columns')
-    raise
-
-try:
-    assert content.shape[0] > 100000
-except AssertionError:
+if not content.shape[0] > 100000:
     logger.warning('Less than 100,000 rows in raw content')
 
 logger.info('Number of rows in raw content: %s.', content.shape[0])
@@ -106,6 +103,45 @@ content = pd.merge(
 content.loc[content['_merge'] == 'left_only', 'document_type_gp'] = 'other'
 content.drop('_merge', axis=1, inplace=True)
 
+# Add 'taxon' column
+
+logger.info("Creating 'taxons' column.")
+
+taxonomy_query = TaxonomyQuery()
+
+
+def mapper(x_links):
+    if taxonomy_query.content_linked_to_root({'links': x_links}):
+        return list(map(lambda x: x['content_id'], x_links['taxons']))
+    else:
+        return np.NaN
+
+
+content.dropna(subset=['links'], inplace=True)
+
+content['taxons'] = content['links'].map(mapper)
+
+logger.info("Creating 'primary_publishing_organisation' column.")
+
+
+def pub_mapper(x_links):
+    if 'primary_publishing_organisation' in x_links:
+        return x_links['primary_publishing_organisation'][0]['title']
+    else:
+        return np.NaN
+
+
+content['primary_publishing_organisation'] = content['links'].map(pub_mapper)
+
+rm = ['analytics_identifier', 'links', 'need_ids', 'phase', 'publishing_request_id', 'redirects', 'rendering_app',
+      'schema_name', 'withdrawn_notice']
+
+logger.info("Dropping %s columns.", len(rm))
+
+content.drop(rm, axis=1, inplace=True)
+
+logger.info("Shape after drop: %s", content.shape)
+
 
 def is_json(raw_text):
     try:
@@ -120,11 +156,11 @@ def is_html(raw_text):
 
 
 look = ['title', 'body']
-child_keys = ['title','description']
-filtered = ['body','brand','documents','final_outcome_detail','final_outcome_documents',
-            'government','headers','introduction','introductory_paragraph',
-            'licence_overview','licence_short_description','logo','metadata','more_information','need_to_know',
-            'other_ways_to_apply','summary','ways_to_respond','what_you_need_to_know','will_continue_on','parts',
+child_keys = ['title', 'description']
+filtered = ['body', 'brand', 'documents', 'final_outcome_detail', 'final_outcome_documents',
+            'government', 'headers', 'introduction', 'introductory_paragraph',
+            'licence_overview', 'licence_short_description', 'logo', 'metadata', 'more_information', 'need_to_know',
+            'other_ways_to_apply', 'summary', 'ways_to_respond', 'what_you_need_to_know', 'will_continue_on', 'parts',
             'collection_groups']
 
 
@@ -137,16 +173,16 @@ reconsider) and extract plaintext from included html.
     """
     total_text = ""
     string_json = json.dumps(OrderedDict(x))
-    order_json = json.loads(string_json,object_pairs_hook=OrderedDict)
-    for key,raw_text in sorted(order_json.items()):
+    order_json = json.loads(string_json, object_pairs_hook=OrderedDict)
+    for key, raw_text in sorted(order_json.items()):
         if key in filtered:
-            if isinstance(raw_text,str) and len(raw_text)>1:
-                raw_text = raw_text.replace("-"," ")
+            if isinstance(raw_text, str) and len(raw_text) > 1:
+                raw_text = raw_text.replace("-", " ")
                 raw_token = raw_text.split(" ")
-                if len(raw_token)>0:
+                if len(raw_token) > 0:
                     raw_string = extract_text(raw_text)
                     total_text += " " + raw_string
-            elif isinstance(raw_text,list) and len(raw_text)>0:
+            elif isinstance(raw_text, list) and len(raw_text) > 0:
                 for sub_text in raw_text:
                     if is_json(sub_text):
                         total_text += nested_extract(sub_text)
@@ -164,25 +200,46 @@ Iterate over nested json (avoiding recursion), flattening loops.
     """
     ttext = ""
     string_json2 = json.dumps(OrderedDict(x))
-    order_json2 = json.loads(string_json2,object_pairs_hook=OrderedDict)
+    order_json2 = json.loads(string_json2, object_pairs_hook=OrderedDict)
     if ('body' or 'title') in order_json2.keys():
         for item in look:
             raw_string2 = extract_text(order_json2[item])
             if len(raw_string2.split()) > 1:
-                ttext += " " +raw_string2
+                ttext += " " + raw_string2
     elif 'child_sections' in order_json2.keys():
         for child in order_json2['child_sections']:
             for key in child_keys:
                 ttext += " " + child[key]
     return ttext
 
-# Clean the html
 
+# Filter out content not in english (locale =='en')
+
+logger.info('Filtering out non-english documents')
+logger.info('content.shape before filtering: %s', content.shape)
+
+content = content[content.locale == 'en']
+
+logger.info("content.shape after keeping only english content: %s", content.shape)
+
+# stripout out-of-scope World items
+
+logger.info('content shape before removing doctypes related to world %s', content.shape)
+content = content[content.document_type != 'worldwide_organisation']
+content = content[content.document_type != 'placeholder_world_location_news_page']
+content = content[content.document_type != 'travel_advice']
+logger.info('content shape after removing doctypes related to world %s', content.shape)
+
+# Clean the html
 
 logger.info('Extracting title, description, and text from content.')
 
 logger.info('Extracting text from nested json tags (previously body)')
+print("Empty details:", content['details'].isna().sum())
+content.dropna(subset=['details'], inplace=True)
+
 content['body'] = content['details'].map(get_text)
+
 logger.debug('Text extracted from body looks like: %s', content['body'][0:10])
 
 logger.info('Extracting text from description')
@@ -195,26 +252,6 @@ logger.debug('Text extracted from title looks like: %s', content['title'][0:10])
 
 logger.info('Concatenating title, description, and text.')
 content['combined_text'] = content['title'] + ' ' + content['description'] + ' ' + content['body']
-
-
-# Filter out content not in english (locale =='en')
-
-logger.info('Filtering out non-english documents')
-logger.info('content.shape before filtering: %s', content.shape)
-
-content = content[content.locale == 'en']
-
-logger.info("content.shape after keeping only english content: %s", content.shape)
-
-
-# stripout out-of-scope World items
-
-logger.info('content shape before removing doctypes related to world %s', content.shape)
-content = content[content.document_type != 'worldwide_organisation']
-content = content[content.document_type != 'placeholder_world_location_news_page']
-content = content[content.document_type != 'travel_advice']
-logger.info('content shape after removing doctypes related to world %s', content.shape)
-
 
 # TOKENIZE ALL content before splitting into labelled/unlabelled
 logger.info('tokenizing combined_text')
@@ -318,32 +355,20 @@ logger.debug('content_long.shape: %s', content_long.shape)
 
 logger.info('Extract content_id into taxon_id column.')
 
-content_long = content_long.assign(taxon_id=[d['content_id'] for d in content_long['taxon']])
+content_long.rename(columns={'taxon': 'taxon_id'}, inplace=True)
 
-logger.debug("content_long['taxon'][0:10]: %s", content_long['taxon'][0:10])
+logger.debug("content_long['taxon_id'][0:10]: %s", content_long['taxon_id'][0:10])
 
-content_long = content_long.drop(['taxon'], axis=1)
+logger.info('content_long.shape: %s', content_long.shape)
+logger.info('columns %s', content_long.columns.tolist())
 
-logger.debug('content_long.shape: %s', content_long.shape)
 logger.debug('content_long.head(): %s', content_long.head())
-
-# Assert content long has 14 columns
-
-logger.info('Assert that column_long has the expected 15 columns.')
-
-try:
-    assert content_long.shape[1] == 15
-except AssertionError:
-    logger.exception('Incorrect number of columns in content_long (labelled content)')
-    raise
 
 # Assert content long has more than 300000 rows
 
 logger.info('Assert that column_long has tmore than 300,000 rows.')
 
-try:
-    assert content_long.shape[0] > 300000
-except AssertionError:
+if not content_long.shape[0] > 300000:
     logger.warning('Less than 300,000 rows in content_long (labelled content)')
 
 # Confirm that untagged content is not contained in content_long
@@ -358,12 +383,10 @@ untagged_drop_check = pd.merge(
     indicator=True
 )
 
-try:
-    assert untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0] < 10
-except AssertionError:
+if not untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0] < 10:
     logger.exception('There are %s content items in both the untagged and labelled data',
                      untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0])
-    raise
+    raise Exception('Tagged/Untagged overlap')
 
 # Write out to intermediate csv
 
