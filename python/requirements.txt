@@ -16,3 +16,4 @@ requests==2.18.4
 responses==0.8.1
 statsd==3.2.2
 progressbar2==3.35.2
+ijson==2.3

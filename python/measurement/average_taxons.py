@@ -1,4 +1,5 @@
 import gzip
+import ijson
 from lib import json_arrays
 from lib.helpers import dig
 from lib import services
@@ -15,6 +16,6 @@ def measure_average_taxons(filename):
         return len([taxon for taxon in taxons if __query.taxon_linked_to_root(taxon)])
 
     with gzip.open(filename, mode='rt') as file:
-        content_generator = json_arrays.read_json(file)
+        content_generator = ijson.items(file, prefix='item')
         value = mean(map(__number_of_taxons, filter(__query.content_linked_to_root, content_generator)))
         services.statsd.gauge('average_taxons_per_content_item', value)
