@@ -11,6 +11,7 @@ from keras.preprocessing.sequence import pad_sequences
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from keras.utils import to_categorical
 from sklearn.exceptions import DataConversionWarning
+import warnings
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
@@ -260,15 +261,16 @@ description_onehot = tokenizer_description.sequences_to_matrix(description_seque
 
 print('train/dev/test splitting')
 size_after_resample = balanced_df.shape[0]
+print('size_after_resmaple ={}'.format(size_after_resample))
 end_dev = size_train + size_dev
-
+print('end_dev ={}'.format(end_dev))
 # assign the indices for separating the original (pre-sampled) data into
 # train/dev/test
 splits = [(0, size_train), (size_train, end_dev), (end_dev, size_before_resample)]
-
+print('splits ={}'.format(splits))
 # assign the indices for separating out the resampled training data
 resampled_split = [(size_before_resample, size_after_resample)]
-
+print('resampled_split ={}'.format(resampled_split))
 
 def split(data_to_split, split_indices):
     """split data along axis=0 (rows) at indices designated in split_indices"""
@@ -277,7 +279,7 @@ def split(data_to_split, split_indices):
         list_of_split_data_subsets.append(data_to_split[start:end])
     return tuple(list_of_split_data_subsets)
 
-
+print('extract combined text arrays')
 # extract arrays as subsets of original text data
 x_train, x_dev, x_test = split(combined_text_sequences_padded, splits)
 # extract array of all resampled training text data
@@ -285,18 +287,22 @@ x_resampled = split(combined_text_sequences_padded, resampled_split)[0]
 # append resampled data to original training subset
 x_train = np.concatenate([x_train, x_resampled], axis=0)
 
+print('extract metadata arrays')
 meta_train, meta_dev, meta_test = split(meta, splits)
 meta_resampled = split(meta, resampled_split)[0]
 meta_train = np.concatenate([meta_train, meta_resampled], axis=0)
 
+print('extract title arrays')
 title_train, title_dev, title_test = split(title_onehot, splits)
 title_resampled = split(title_onehot, resampled_split)[0]
 title_train = np.concatenate([title_train, title_resampled], axis=0)
 
+print('extract description arrays')
 desc_train, desc_dev, desc_test = split(description_onehot, splits)
 desc_resampled = split(description_onehot, resampled_split)[0]
 desc_train = np.concatenate([desc_train, desc_resampled], axis=0)
 
+print('extract Y arrays')
 y_train, y_dev, y_test = split(binary_multilabel, splits)
 y_resampled = split(binary_multilabel, resampled_split)[0]
 y_train = np.concatenate([y_train, y_resampled], axis=0)
