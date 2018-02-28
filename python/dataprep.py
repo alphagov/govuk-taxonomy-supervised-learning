@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from keras.utils import to_categorical
 from sklearn.exceptions import DataConversionWarning
 import warnings
+from scipy import sparse
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
