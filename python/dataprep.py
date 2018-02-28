@@ -307,22 +307,43 @@ y_train, y_dev, y_test = split(binary_multilabel, splits)
 y_resampled = split(binary_multilabel, resampled_split)[0]
 y_train = np.concatenate([y_train, y_resampled], axis=0)
 
-print('saving arrays')
-np.savez_compressed(os.path.join(DATADIR,'train_arrays.npz'),
+print('convert to sparse matrices')
+x_train = sparse.csr_matrix(x_train)
+meta_train = sparse.csr_matrix(meta_train)
+title_train = sparse.csr_matrix(title_train)
+description_train = sparse.csr_matrix(desc_train)
+y_train = sparse.csr_matrix(y_train)
+
+x_dev = sparse.csr_matrix(x_dev)
+meta_dev = sparse.csr_matrix(meta_dev)
+title_dev = sparse.csr_matrix(title_dev)
+description_dev = sparse.csr_matrix(desc_dev)
+y_dev = sparse.csr_matrix(y_dev)
+
+x_test = sparse.csr_matrix(x_test)
+meta_test = sparse.csr_matrix(meta_test)
+title_test = sparse.csr_matrix(title_test)
+description_test = sparse.csr_matrix(desc_test)
+y_test = sparse.csr_matrix(y_test)
+
+print('saving train arrays')
+np.savez(os.path.join(DATADIR,'train_arrays.npz'),
                     x=x_train,
                     meta=meta_train,
                     title=title_train,
                     desc=desc_train,
                     y=y_train)
 
-np.savez_compressed(os.path.join(DATADIR,'dev_arrays.npz'),
+print('saving dev arrays')
+np.savez(os.path.join(DATADIR,'dev_arrays.npz'),
                     x=x_dev,
                     meta=meta_dev,
                     title=title_dev,
                     desc=desc_dev,
                     y=y_dev)
 
-np.savez_compressed(os.path.join(DATADIR,'test_arrays.npz'),
+print('saving test arrays')
+np.savez(os.path.join(DATADIR,'test_arrays.npz'),
                     x=x_test,
                     meta=meta_test,
                     title=title_test,
@@ -330,4 +351,11 @@ np.savez_compressed(os.path.join(DATADIR,'test_arrays.npz'),
                     y=y_test)
 
 id_train, id_dev, id_test = split(meta_df['content_id'], splits)
-np.savez_compressed(os.path.join(DATADIR,'content_combo.npz'), train=id_train, dev=id_dev, test=id_test)
+
+id_train = sparse.csr_matrix(id_train)
+id_dev = sparse.csr_matrix(id_dev)
+id_test = sparse.csr_matrix(id_test)
+
+
+print('saving content_id arrays')
+np.savez_compressed(os.path.join(DATADIR,'content_id_arrays.npz'), train=id_train, dev=id_dev, test=id_test)
