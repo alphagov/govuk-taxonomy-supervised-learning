@@ -276,10 +276,10 @@ print('resampled_split ={}'.format(resampled_split))
 
 def split(data_to_split, split_indices):
     """split data along axis=0 (rows) at indices designated in split_indices"""
-    list_of_split_data_subsets = []
-    for (start, end) in split_indices:
-        list_of_split_data_subsets.append(data_to_split[start:end])
-    return tuple(list_of_split_data_subsets)
+    return tuple(
+        data_to_split[start:end]
+        for (start, end) in split_indices
+    )
 
 print('extract combined text arrays')
 # extract arrays as subsets of original text data
