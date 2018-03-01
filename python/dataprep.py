@@ -238,21 +238,21 @@ combined_text_sequences_padded = pad_sequences(
 # which are one-hot encoded for the 10,000 most common words
 # to be fed in after the flatten layer (through fully connected layers)
 
-print('converting title text to sequences')
-title_sequences = tokenizer_title.texts_to_sequences(
+print('one-hot encoding title sequences')
+tokenizer_title.num_words = 10000
+title_onehot = tokenizer_title.texts_to_matrix(
     balanced_df.index.get_level_values('title')
 )
 
-print('one-hot encoding title sequences')
-title_onehot = tokenizer_title.sequences_to_matrix(title_sequences)
+print('title_onehot shape {}'.format(title_onehot.shape))
 
-print('converting description text to sequences')
-description_sequences = tokenizer_description.texts_to_sequences(
+print('one-hot encoding description sequences')
+tokenizer_description.num_words = 10000
+description_onehot = tokenizer_description.texts_to_matrix(
     balanced_df.index.get_level_values('description')
 )
 
-print('one-hot encoding description sequences')
-description_onehot = tokenizer_description.sequences_to_matrix(description_sequences)
+print('description_onehot shape {}'.format(description_onehot.shape))
 
 # ******* TRAIN/DEV/TEST SPLIT DATA ****************
 # **************************************************
