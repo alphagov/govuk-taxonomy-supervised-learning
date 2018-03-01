@@ -103,11 +103,14 @@ upsampled_training = pd.DataFrame()
 last_taxon = len(binary_multilabel.columns) + 1
 
 for taxon in range(1, last_taxon):
-    num_samples = binary_multilabel[binary_multilabel[taxon] == 1].shape[0]
-    if num_samples < 500:
+    training_samples_tagged_to_taxon = binary_multilabel[
+        binary_multilabel[taxon] == 1
+    ][:size_train]
+
+    if training_samples_tagged_to_taxon.shape[0] < 500:
         print("Taxon code:", taxon, "Taxon name:", labels_index[taxon])
-        print("SMALL SUPPORT:", num_samples)
-        df_minority = binary_multilabel[binary_multilabel[taxon] == 1].loc[training_indices]
+        print("SMALL SUPPORT:", training_samples_tagged_to_taxon.shape[0])
+        df_minority = training_samples_tagged_to_taxon
         if not df_minority.empty:
             # Upsample minority class
             print(df_minority.shape)
