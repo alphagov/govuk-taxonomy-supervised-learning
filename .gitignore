@@ -5,7 +5,7 @@ tax_SL
 .ipynb_checkpoints
 checkpoints
 *tf_logs
-data
+/data/
 .DS_Store
 __pycache__
 */.cache
