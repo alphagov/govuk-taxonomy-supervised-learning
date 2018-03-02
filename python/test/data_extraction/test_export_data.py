@@ -41,7 +41,7 @@ class TestExportData(unittest.TestCase):
             self.assertCountEqual(expected, json.loads(output.buffer))
 
     def test_export_filtered_content(self):
-        input_string = "[" + json.dumps(content_with_taxons) + ",\n" + json.dumps(content_without_taxons) + "\n]"
+        input_string = json.dumps([content_with_taxons, content_without_taxons])
         output = MockIO()
         with unittest.mock.patch('gzip.open',
                                  side_effect=self.return_input_or_output(io.StringIO(input_string), output)):
@@ -55,7 +55,7 @@ class TestExportData(unittest.TestCase):
 
     def export_untagged_content(self):
         output = MockIO()
-        input_string = "[" + json.dumps(content_with_taxons) + ",\n" + json.dumps(content_without_taxons) + "\n]"
+        input_string = json.dumps([content_with_taxons, content_without_taxons])
 
         with unittest.mock.patch('gzip.open',
                                  side_effect=self.return_input_or_output(io.StringIO(input_string), output)):
