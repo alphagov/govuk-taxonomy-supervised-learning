@@ -1,7 +1,8 @@
 #!/usr/bin/env groovy
 
+library("govuk")
+
 node {
-  def govuk = load('/var/lib/jenkins/groovy_scripts/govuk_jenkinslib.groovy')
   def repoName = JOB_NAME.split('/')[0]
 
   stage('Checkout') {
