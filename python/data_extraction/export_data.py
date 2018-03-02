@@ -1,7 +1,9 @@
+import data
 from data_extraction import content_export
 from data_extraction import taxonomy_query
 from lib import plek
 from lib.helpers import dig
+import yaml
 import functools
 import progressbar
 from multiprocessing import Pool
@@ -54,14 +56,13 @@ def __get_all_content():
         content_store_url=plek.find('draft-content-store')
     )
 
+    blacklisted_document_types = data.document_types_excluded_from_the_topic_taxonomy()
     progress_bar = progressbar.ProgressBar()
 
     content_links_list = list(
         progress_bar(
             content_export.content_links_generator(
-                blacklist_document_types=configuration[
-                    'blacklist_document_types'
-                ]
+                blacklist_document_types=blacklisted_document_types
             )
         )
     )
