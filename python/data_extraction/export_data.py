@@ -1,3 +1,4 @@
+import data
 from data_extraction import content_export
 from data_extraction import taxonomy_query
 from lib import json_arrays, plek
@@ -12,11 +13,6 @@ import os
 
 
 config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'config', 'data_export_fields.json')
-
-document_types_excluded_from_the_topic_taxonomy_filename = \
-    os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                 '..', 'config', 'document_types_excluded_from_the_topic_taxonomy.yml'
-    )
 
 with open(config_path) as json_data_file:
     configuration = json.load(json_data_file)
@@ -36,12 +32,7 @@ def __get_all_content():
         content_store_url=plek.find('draft-content-store')
     )
 
-    with open(
-        document_types_excluded_from_the_topic_taxonomy_filename,
-        'r'
-    ) as f:
-        blacklisted_document_types = yaml.load(f)['document_types']
-
+    blacklisted_document_types = data.document_types_excluded_from_the_topic_taxonomy()
     progress_bar = progressbar.ProgressBar()
 
     content_links_list = list(
