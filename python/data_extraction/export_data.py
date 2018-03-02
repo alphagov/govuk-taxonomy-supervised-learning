@@ -8,6 +8,7 @@ from multiprocessing import Pool
 import gzip
 import json
 import os
+import ijson
 
 
 config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'config', 'data_export_fields.json')
@@ -21,7 +22,7 @@ def __transform_content(input_filename="data/content.json.gz",
                         transform_function=lambda x: x):
     with gzip.open(input_filename, mode='rt') as input_file:
         with gzip.open(output_filename, mode='wt') as output_file:
-            content_generator = json_arrays.read_json(input_file)
+            content_generator = ijson.items(input_file, prefix='item')
             json_arrays.write_json(output_file, transform_function(content_generator))
 
 def __get_all_content():
