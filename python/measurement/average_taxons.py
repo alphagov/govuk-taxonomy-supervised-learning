@@ -1,7 +1,6 @@
 import gzip
 import ijson
 import progressbar
-from lib import json_arrays
 from lib.helpers import dig
 from lib import services
 from statistics import mean
