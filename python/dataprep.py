@@ -256,48 +256,63 @@ meta = create_meta(balanced_df)
 
 # Load tokenizers, fitted on both labelled and unlabelled data from file
 # created in clean_content.py
-print('loading tokenizers')
-tokenizer_combined_text = tokenizing.\
-    load_tokenizer_from_file(os.path.join(DATADIR, "combined_text_tokenizer.json"))
 
-tokenizer_title = tokenizing.\
-    load_tokenizer_from_file(os.path.join(DATADIR,"title_tokenizer.json"))
+def create_passed_combined_text_sequences():
+    tokenizer_combined_text = tokenizing.\
+        load_tokenizer_from_file(os.path.join(DATADIR, "combined_text_tokenizer.json"))
 
-tokenizer_description = tokenizing.\
-    load_tokenizer_from_file(os.path.join(DATADIR, "description_tokenizer.json"))
+    # Prepare combined text data for input into embedding layer
+    print('converting combined text to sequences')
+    tokenizer_combined_text.num_words = 20000
+    combined_text_sequences = tokenizer_combined_text.texts_to_sequences(
+        balanced_df.index.get_level_values('combined_text')
+    )
 
-# Prepare combined text data for input into embedding layer
-print('converting combined text to sequences')
-tokenizer_combined_text.num_words = 20000
-combined_text_sequences = tokenizer_combined_text.texts_to_sequences(
-    balanced_df.index.get_level_values('combined_text')
-)
+    print('padding combined text sequences')
+    combined_text_sequences_padded = pad_sequences(
+        combined_text_sequences,
+        maxlen=1000,  # MAX_SEQUENCE_LENGTH
+        padding='post', truncating='post'
+    )
 
-print('padding combined text sequences')
-combined_text_sequences_padded = pad_sequences(
-    combined_text_sequences,
-    maxlen=1000,  # MAX_SEQUENCE_LENGTH
-    padding='post', truncating='post'
-)
+    return combined_text_sequences_padded
+
+combined_text_sequences_padded = create_passed_combined_text_sequences()
+
+def create_one_hot_matrix_for_column(
+        tokenizer,
+        column_name,
+        num_words,
+):
+    tokenizer.num_words = num_words
+    return tokenizer.texts_to_matrix(
+        balanced_df.index.get_level_values(column_name)
+    )
 
 # prepare title and description matrices, 
 # which are one-hot encoded for the 10,000 most common words
 # to be fed in after the flatten layer (through fully connected layers)
 
 print('one-hot encoding title sequences')
-tokenizer_title.num_words = 10000
-title_onehot = tokenizer_title.texts_to_matrix(
-    balanced_df.index.get_level_values('title')
+
+title_onehot = create_one_hot_matrix_for_column(
+    tokenizing.load_tokenizer_from_file(
+        os.path.join(DATADIR,"title_tokenizer.json")
+    ),
+    'title',
+    num_words=10000,
 )
 
 print('title_onehot shape {}'.format(title_onehot.shape))
 
-# title_tfidf = tokenizer_title.texts_to_matrix(balanced_df.index.get_level_values('title'), 'tfidf')
-
 print('one-hot encoding description sequences')
-tokenizer_description.num_words = 10000
-description_onehot = tokenizer_description.texts_to_matrix(
-    balanced_df.index.get_level_values('description')
+
+description_onehot = create_one_hot_matrix_for_column(
+    tokenizing.load_tokenizer_from_file(
+        os.path.join(DATADIR,"description_tokenizer.json")
+    ),
+    'description',
+    num_words=10000,
 )
 
 print('description_onehot shape {}'.format(description_onehot.shape))
