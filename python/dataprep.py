@@ -249,6 +249,8 @@ title_onehot = tokenizer_title.texts_to_matrix(
 
 print('title_onehot shape {}'.format(title_onehot.shape))
 
+# title_tfidf = tokenizer_title.texts_to_matrix(balanced_df.index.get_level_values('title'), 'tfidf')
+
 print('one-hot encoding description sequences')
 tokenizer_description.num_words = 10000
 description_onehot = tokenizer_description.texts_to_matrix(
@@ -256,6 +258,8 @@ description_onehot = tokenizer_description.texts_to_matrix(
 )
 
 print('description_onehot shape {}'.format(description_onehot.shape))
+
+# description_tfidf = tokenizer_description.texts_to_matrix(balanced_df.index.get_level_values('description'), 'tfidf')
 
 # ******* TRAIN/DEV/TEST SPLIT DATA ****************
 # **************************************************
@@ -266,7 +270,7 @@ print('description_onehot shape {}'.format(description_onehot.shape))
 
 print('train/dev/test splitting')
 size_after_resample = balanced_df.shape[0]
-print('size_after_resmaple ={}'.format(size_after_resample))
+print('size_after_resample ={}'.format(size_after_resample))
 end_dev = size_train + size_dev
 print('end_dev ={}'.format(end_dev))
 # assign the indices for separating the original (pre-sampled) data into
@@ -312,30 +316,52 @@ y_train, y_dev, y_test = split(binary_multilabel, splits)
 y_resampled = split(binary_multilabel, resampled_split)[0]
 y_train = np.concatenate([y_train, y_resampled], axis=0)
 
-print('convert to sparse matrices')
+# print('extract title_tfidf arrays')
+# title_tfidf_train, title_tfidf_dev, title_tfidf_test = split(title_tfidf, splits)
+# title_tfidf_resampled = split(title_tfidf, resampled_split)[0]
+# title_tfidf_train = np.concatenate([title_tfidf_train, title_tfidf_resampled], axis=0)
+
+# print('extract description_tfidf arrays')
+# description_tfidf_train, description_tfidf_dev, description_tfidf_test = split(description_tfidf, splits)
+# description_tfidf_resampled = split(description_tfidf, resampled_split)[0]
+# description_tfidf_train = np.concatenate([description_tfidf_train, description_tfidf_resampled], axis=0)
+
+print('convert to sparse matrices (training)')
 x_train = sparse.csr_matrix(x_train)
 meta_train = sparse.csr_matrix(meta_train)
 title_train = sparse.csr_matrix(title_train)
 description_train = sparse.csr_matrix(desc_train)
 y_train = sparse.csr_matrix(y_train)
 
+print('convert to sparse matrices (dev)')
 x_dev = sparse.csr_matrix(x_dev)
 meta_dev = sparse.csr_matrix(meta_dev)
 title_dev = sparse.csr_matrix(title_dev)
 description_dev = sparse.csr_matrix(desc_dev)
 y_dev = sparse.csr_matrix(y_dev)
 
+print('convert to sparse matrices (test')
 x_test = sparse.csr_matrix(x_test)
 meta_test = sparse.csr_matrix(meta_test)
 title_test = sparse.csr_matrix(title_test)
 description_test = sparse.csr_matrix(desc_test)
 y_test = sparse.csr_matrix(y_test)
 
+# title_tfidf_train = sparse.csr_matrix(title_tfidf_train)
+# title_tfidf_dev = sparse.csr_matrix(title_tfidf_dev)
+# title_tfidf_test = sparse.csr_matrix(title_tfidf_test)
+
+# description_tfidf_train = sparse.csr_matrix(description_tfidf_train)
+# description_tfidf_dev = sparse.csr_matrix(description_tfidf_dev)
+# description_tfidf_test = sparse.csr_matrix(description_tfidf_test)
+
 print('saving train arrays')
 np.savez(os.path.join(DATADIR,'train_arrays.npz'),
                     x=x_train,
                     meta=meta_train,
                     title=title_train,
+                    # title_tfidf=title_tfidf_train,
+                    # desc_tfidf=description_tfidf_train,
                     desc=desc_train,
                     y=y_train)
 
@@ -344,6 +370,8 @@ np.savez(os.path.join(DATADIR,'dev_arrays.npz'),
                     x=x_dev,
                     meta=meta_dev,
                     title=title_dev,
+                    # title_tfidf=title_tfidf_dev,
+                    # desc_tfidf=description_tfidf_dev,
                     desc=desc_dev,
                     y=y_dev)
 
@@ -352,6 +380,8 @@ np.savez(os.path.join(DATADIR,'test_arrays.npz'),
                     x=x_test,
                     meta=meta_test,
                     title=title_test,
+                    # title_tfidf=title_tfidf_test,
+                    # desc_tfidf=description_tfidf_test,
                     desc=desc_test,
                     y=y_test)
 
