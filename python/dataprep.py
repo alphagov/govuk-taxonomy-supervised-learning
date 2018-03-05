@@ -137,7 +137,10 @@ def upsample_low_support_taxons(binary_multilabel, size_train):
 
     upsampled_training = shuffle(upsampled_training, random_state=0)
 
-    balanced_df = pd.concat([binary_multilabel, upsampled_training])
+    print("Size of upsampled_training: {}".format(upsampled_training.shape[0]))
+    size_train += upsampled_training.shape[0]
+
+    balanced_df = pd.concat([upsampled_training, binary_multilabel])
     balanced_df.astype(int)
     balanced_df.columns.astype(int)
 
@@ -247,7 +250,7 @@ def create_meta(balanced_df):
         axis=1
     )
 
-    return meta
+    return sparse.csr_matrix(meta)
 
 meta = create_meta(balanced_df)
 
@@ -285,8 +288,10 @@ def create_one_hot_matrix_for_column(
         num_words,
 ):
     tokenizer.num_words = num_words
-    return tokenizer.texts_to_matrix(
-        balanced_df.index.get_level_values(column_name)
+    return sparse.csr_matrix(
+        tokenizer.texts_to_matrix(
+            balanced_df.index.get_level_values(column_name)
+        )
     )
 
 # prepare title and description matrices, 
@@ -326,18 +331,6 @@ print('description_onehot shape {}'.format(description_onehot.shape))
 # - Development data = 10%
 # - Test data = 10%
 
-print('train/dev/test splitting')
-size_after_resample = balanced_df.shape[0]
-print('size_after_resample ={}'.format(size_after_resample))
-end_dev = size_train + size_dev
-print('end_dev ={}'.format(end_dev))
-# assign the indices for separating the original (pre-sampled) data into
-# train/dev/test
-splits = [(0, size_train), (size_train, end_dev), (end_dev, size_before_resample)]
-print('splits ={}'.format(splits))
-# assign the indices for separating out the resampled training data
-resampled_split = [(size_before_resample, size_after_resample)]
-print('resampled_split ={}'.format(resampled_split))
 
 def split(data_to_split, split_indices):
     """split data along axis=0 (rows) at indices designated in split_indices"""
@@ -346,112 +339,52 @@ def split(data_to_split, split_indices):
         for (start, end) in split_indices
     )
 
-print('extract combined text arrays')
-# extract arrays as subsets of original text data
-x_train, x_dev, x_test = split(combined_text_sequences_padded, splits)
-# extract array of all resampled training text data
-x_resampled = split(combined_text_sequences_padded, resampled_split)[0]
-# append resampled data to original training subset
-x_train = np.concatenate([x_train, x_resampled], axis=0)
+print('train/dev/test splitting')
 
-print('extract metadata arrays')
-meta_train, meta_dev, meta_test = split(meta, splits)
-meta_resampled = split(meta, resampled_split)[0]
-meta_train = np.concatenate([meta_train, meta_resampled], axis=0)
+end_dev = size_train + size_dev
+print('end_dev ={}'.format(end_dev))
+# assign the indices for separating the original (pre-sampled) data into
+# train/dev/test
+splits = [(0, size_train), (size_train, end_dev), (end_dev, balanced_df.shape[0])]
+print('splits ={}'.format(splits))
 
-print('extract title arrays')
-title_train, title_dev, title_test = split(title_onehot, splits)
-title_resampled = split(title_onehot, resampled_split)[0]
-title_train = np.concatenate([title_train, title_resampled], axis=0)
+def process_split(
+        split_name,
+        split,
+        data,
+):
+    start, end = split
 
-print('extract description arrays')
-desc_train, desc_dev, desc_test = split(description_onehot, splits)
-desc_resampled = split(description_onehot, resampled_split)[0]
-desc_train = np.concatenate([desc_train, desc_resampled], axis=0)
+    split_data = {
+        name: df[start:end]
+        for name, df in data.items()
+    }
 
-# ********** CREATE Y ARRAY **************
-# ****************************************
+    np.savez(
+        os.path.join(DATADIR,'{}_arrays.npz'.format(split_name)),
+        **split_data
+    )
 
 # convert columns to an array. Each row represents a content item,
 # each column an individual taxon
 binary_multilabel = balanced_df[list(balanced_df.columns)].values
 print('Example row of multilabel array {}'.format(binary_multilabel[2]))
 
-print('extract Y arrays')
-y_train, y_dev, y_test = split(binary_multilabel, splits)
-y_resampled = split(binary_multilabel, resampled_split)[0]
-y_train = np.concatenate([y_train, y_resampled], axis=0)
+data = {
+    "x": combined_text_sequences_padded,
+    "meta": meta,
+    "title": title_onehot,
+    "desc": description_onehot,
+    "y": sparse.csr_matrix(binary_multilabel),
+    "content_id": balanced_df.index.get_level_values('content_id'),
+}
 
-# print('extract title_tfidf arrays')
-# title_tfidf_train, title_tfidf_dev, title_tfidf_test = split(title_tfidf, splits)
-# title_tfidf_resampled = split(title_tfidf, resampled_split)[0]
-# title_tfidf_train = np.concatenate([title_tfidf_train, title_tfidf_resampled], axis=0)
+for split, name in zip(splits, ('train', 'dev', 'test')):
+    print("Generating {} split".format(name))
+    process_split(
+        name,
+        split,
+        data
+    )
 
-# print('extract description_tfidf arrays')
-# description_tfidf_train, description_tfidf_dev, description_tfidf_test = split(description_tfidf, splits)
-# description_tfidf_resampled = split(description_tfidf, resampled_split)[0]
-# description_tfidf_train = np.concatenate([description_tfidf_train, description_tfidf_resampled], axis=0)
-
-print('convert to sparse matrices (training)')
-x_train = sparse.csr_matrix(x_train)
-meta_train = sparse.csr_matrix(meta_train)
-title_train = sparse.csr_matrix(title_train)
-description_train = sparse.csr_matrix(desc_train)
-y_train = sparse.csr_matrix(y_train)
-
-print('convert to sparse matrices (dev)')
-x_dev = sparse.csr_matrix(x_dev)
-meta_dev = sparse.csr_matrix(meta_dev)
-title_dev = sparse.csr_matrix(title_dev)
-description_dev = sparse.csr_matrix(desc_dev)
-y_dev = sparse.csr_matrix(y_dev)
-
-print('convert to sparse matrices (test')
-x_test = sparse.csr_matrix(x_test)
-meta_test = sparse.csr_matrix(meta_test)
-title_test = sparse.csr_matrix(title_test)
-description_test = sparse.csr_matrix(desc_test)
-y_test = sparse.csr_matrix(y_test)
-
-# title_tfidf_train = sparse.csr_matrix(title_tfidf_train)
-# title_tfidf_dev = sparse.csr_matrix(title_tfidf_dev)
-# title_tfidf_test = sparse.csr_matrix(title_tfidf_test)
-
-# description_tfidf_train = sparse.csr_matrix(description_tfidf_train)
-# description_tfidf_dev = sparse.csr_matrix(description_tfidf_dev)
-# description_tfidf_test = sparse.csr_matrix(description_tfidf_test)
-
-print('saving train arrays')
-np.savez(os.path.join(DATADIR,'train_arrays.npz'),
-                    x=x_train,
-                    meta=meta_train,
-                    title=title_train,
-                    # title_tfidf=title_tfidf_train,
-                    # desc_tfidf=description_tfidf_train,
-                    desc=description_train,
-                    y=y_train)
-
-print('saving dev arrays')
-np.savez(os.path.join(DATADIR,'dev_arrays.npz'),
-                    x=x_dev,
-                    meta=meta_dev,
-                    title=title_dev,
-                    # title_tfidf=title_tfidf_dev,
-                    # desc_tfidf=description_tfidf_dev,
-                    desc=description_dev,
-                    y=y_dev)
-
-print('saving test arrays')
-np.savez(os.path.join(DATADIR,'test_arrays.npz'),
-                    x=x_test,
-                    meta=meta_test,
-                    title=title_test,
-                    # title_tfidf=title_tfidf_test,
-                    # desc_tfidf=description_tfidf_test,
-                    desc=description_test,
-                    y=y_test)
-
-id_train, id_dev, id_test = split(meta_df['content_id'], splits)
-
-print('saving content_id arrays')
-np.savez(os.path.join(DATADIR,'content_id_arrays.npz'), train=id_train, dev=id_dev, test=id_test)
+print("Finished")
