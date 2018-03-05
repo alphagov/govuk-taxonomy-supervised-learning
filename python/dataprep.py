@@ -145,13 +145,6 @@ def upsample_low_support_taxons(binary_multilabel):
 
 balanced_df = upsample_low_support_taxons(binary_multilabel)
 
-# ********** CREATE Y ARRAY **************
-# ****************************************
-
-# convert columns to an array. Each row represents a content item, each column an individual taxon
-binary_multilabel = balanced_df[list(balanced_df.columns)].values
-print('Example row of multilabel array {}'.format(binary_multilabel[2]))
-
 # ******* Metadata ***************
 # ********************************
 
@@ -321,6 +314,14 @@ print('extract description arrays')
 desc_train, desc_dev, desc_test = split(description_onehot, splits)
 desc_resampled = split(description_onehot, resampled_split)[0]
 desc_train = np.concatenate([desc_train, desc_resampled], axis=0)
+
+# ********** CREATE Y ARRAY **************
+# ****************************************
+
+# convert columns to an array. Each row represents a content item,
+# each column an individual taxon
+binary_multilabel = balanced_df[list(balanced_df.columns)].values
+print('Example row of multilabel array {}'.format(binary_multilabel[2]))
 
 print('extract Y arrays')
 y_train, y_dev, y_test = split(binary_multilabel, splits)
