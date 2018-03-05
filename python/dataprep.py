@@ -102,42 +102,46 @@ print('Size of train set:', size_train)
 size_dev = int(0.1 * size_before_resample)  # test split
 print('Size of dev/test sets:', size_dev)
 
-# extract indices of training samples, which are to be upsampled
 
-training_indices = [binary_multilabel.index[i][0] for i in range(0, size_train)]
+def upsample_low_support_taxons(binary_multilabel):
 
-upsampled_training = pd.DataFrame()
-last_taxon = len(binary_multilabel.columns) + 1
+    # extract indices of training samples, which are to be upsampled
 
-for taxon in range(1, last_taxon):
-    training_samples_tagged_to_taxon = binary_multilabel[
-        binary_multilabel[taxon] == 1
-    ][:size_train]
+    training_indices = [binary_multilabel.index[i][0] for i in range(0, size_train)]
 
-    if training_samples_tagged_to_taxon.shape[0] < 500:
-        print("Taxon code:", taxon, "Taxon name:", labels_index[taxon])
-        print("SMALL SUPPORT:", training_samples_tagged_to_taxon.shape[0])
-        df_minority = training_samples_tagged_to_taxon
-        if not df_minority.empty:
-            # Upsample minority class
-            print(df_minority.shape)
-            df_minority_upsampled = resample(df_minority,
-                                             replace=True,  # sample with replacement
-                                             n_samples=(500),
-                                             # to match majority class, switch to max_content_freq if works
-                                             random_state=123)  # reproducible results
+    upsampled_training = pd.DataFrame()
+    last_taxon = len(binary_multilabel.columns) + 1
 
-            print("FIRST 5 IDs:", [df_minority_upsampled.index[i][0] for i in range(0, 5)])
+    for taxon in range(1, last_taxon):
+        training_samples_tagged_to_taxon = binary_multilabel[
+            binary_multilabel[taxon] == 1
+        ][:size_train]
 
-            # Combine majority class with upsampled minority class
-            upsampled_training = pd.concat([upsampled_training, df_minority_upsampled])
+        if training_samples_tagged_to_taxon.shape[0] < 500:
+            print("Taxon code:", taxon, "Taxon name:", labels_index[taxon])
+            print("SMALL SUPPORT:", training_samples_tagged_to_taxon.shape[0])
+            df_minority = training_samples_tagged_to_taxon
+            if not df_minority.empty:
+                # Upsample minority class
+                print(df_minority.shape)
+                df_minority_upsampled = resample(df_minority,
+                                                 replace=True,  # sample with replacement
+                                                 n_samples=(500),
+                                                 # to match majority class, switch to max_content_freq if works
+                                                 random_state=123)  # reproducible results
+                print("FIRST 5 IDs:", [df_minority_upsampled.index[i][0] for i in range(0, 5)])
+                # Combine majority class with upsampled minority class
+                upsampled_training = pd.concat([upsampled_training, df_minority_upsampled])
+                # Display new shape
+                print("UPSAMPLING:", upsampled_training.shape)
 
-            # Display new shape
-            print("UPSAMPLING:", upsampled_training.shape)
+    upsampled_training = shuffle(upsampled_training, random_state=0)
 
-upsampled_training = shuffle(upsampled_training, random_state=0)
+    balanced_df = pd.concat([binary_multilabel, upsampled_training])
 
-balanced_df = pd.concat([binary_multilabel, upsampled_training])
+    return balanced_df
+
+balanced_df = upsample_low_support_taxons(binary_multilabel)
 
 # ********** CREATE Y ARRAY **************
 # ****************************************
