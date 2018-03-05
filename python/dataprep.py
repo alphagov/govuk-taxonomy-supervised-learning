@@ -57,29 +57,36 @@ labelled_level2['num_taxon_per_content'] = labelled_level2.groupby(["content_id"
 
 # reshape to wide per taxon and keep the combined text so indexing is consistent when splitting X from Y
 
-multilabel = (labelled_level2.pivot_table(index=['content_id',
-                                                 'combined_text',
-                                                 'title',
-                                                 'description'
-                                                 ],
-                                          columns='level2taxon_code',
-                                          values='num_taxon_per_content')
-              )
+def create_binary_multilabel(labelled_level2):
+    multilabel = labelled_level2.pivot_table(
+        index=[
+            'content_id',
+            'combined_text',
+            'title',
+            'description'
+        ],
+        columns='level2taxon_code',
+        values='num_taxon_per_content'
+    )
 
-print('labelled_level2 shape: {}'.format(labelled_level2.shape))
-print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
+    print('labelled_level2 shape: {}'.format(labelled_level2.shape))
+    print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
 
-multilabel.columns.astype('str')
+    multilabel.columns.astype('str')
 
-# THIS IS WHY INDEXING IS NOT ZERO-BASED convert the number_of_taxons_per_content values to 1, meaning there was an
-# entry for this taxon and this content_id, 0 otherwise
-binary_multilabel = multilabel.notnull().astype('int')
+    # THIS IS WHY INDEXING IS NOT ZERO-BASED convert the number_of_taxons_per_content values to 1, meaning there was an
+    # entry for this taxon and this content_id, 0 otherwise
+    binary_multilabel = multilabel.notnull().astype('int')
 
-# shuffle to ensure no order is captured in train/dev/test splits
-binary_multilabel = shuffle(binary_multilabel, random_state=0)
+    # shuffle to ensure no order is captured in train/dev/test splits
+    binary_multilabel = shuffle(binary_multilabel, random_state=0)
 
-# delete the 1st order column name (='level2taxon') for later calls to column names (now string numbers of each taxon)
-del binary_multilabel.columns.name
+    # delete the 1st order column name (='level2taxon') for later calls to column names (now string numbers of each taxon)
+    del binary_multilabel.columns.name
+
+    return binary_multilabel
+
+binary_multilabel = create_binary_multilabel(labelled_level2)
 
 # ***** RESAMPLING OF MINORITY TAXONS **************
 # ****************************************************
