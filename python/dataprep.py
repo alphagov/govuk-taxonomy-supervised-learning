@@ -225,7 +225,7 @@ tokenizer_description = tokenizing.\
 
 # Prepare combined text data for input into embedding layer
 print('converting combined text to sequences')
-tokenizer_combined_text.num_words = 1000
+tokenizer_combined_text.num_words = 20000
 combined_text_sequences = tokenizer_combined_text.texts_to_sequences(
     balanced_df.index.get_level_values('combined_text')
 )
