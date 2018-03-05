@@ -103,7 +103,7 @@ size_dev = int(0.1 * size_before_resample)  # test split
 print('Size of dev/test sets:', size_dev)
 
 
-def upsample_low_support_taxons(binary_multilabel):
+def upsample_low_support_taxons(binary_multilabel, size_train):
 
     # extract indices of training samples, which are to be upsampled
 
@@ -143,7 +143,7 @@ def upsample_low_support_taxons(binary_multilabel):
 
     return balanced_df
 
-balanced_df = upsample_low_support_taxons(binary_multilabel)
+balanced_df = upsample_low_support_taxons(binary_multilabel, size_train)
 
 # ******* Metadata ***************
 # ********************************
