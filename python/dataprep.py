@@ -148,22 +148,8 @@ balanced_df = upsample_low_support_taxons(binary_multilabel)
 # ******* Metadata ***************
 # ********************************
 
-# extract content_id index to df
-meta_df = pd.DataFrame(balanced_df.index.get_level_values('content_id'))
-meta_varlist = ['document_type',
-                'first_published_at',
-                'publishing_app',
-                'primary_publishing_organisation']
 
-for meta_var in meta_varlist:
-    meta_df[meta_var] = meta_df['content_id'].map(
-        dict(zip(labelled_level2['content_id'], labelled_level2[meta_var])))
-
-# convert nans to empty strings for labelencoder types
-meta_df = meta_df.replace(np.nan, '', regex=True)
-
-
-def to_cat_to_hot(var):
+def to_cat_to_hot(meta_df, var):
     """one hot encode each metavar"""
     encoder = LabelEncoder()
     metavar_cat = var + "_cat"  # get categorical codes into new column
@@ -171,46 +157,99 @@ def to_cat_to_hot(var):
     tf.cast(meta_df[metavar_cat], tf.float32)
     return to_categorical(meta_df[metavar_cat])
 
+def create_meta(balanced_df):
 
-dict_of_onehot_encodings = {}
-for metavar in meta_varlist:
-    if metavar != "first_published_at":
-        print(metavar)
-        dict_of_onehot_encodings[metavar] = to_cat_to_hot(metavar)
+    # extract content_id index to df
+    meta_df = pd.DataFrame(balanced_df.index.get_level_values('content_id'))
+    meta_varlist = (
+        'document_type',
+        'first_published_at',
+        'publishing_app',
+        'primary_publishing_organisation'
+    )
 
-# First_published_at:
-# Convert to timestamp, then scale between 0 and 1 so same weight as binary vars
-meta_df['first_published_at'] = pd.to_datetime(meta_df['first_published_at'])
-first_published = np.array(meta_df['first_published_at']).reshape(meta_df['first_published_at'].shape[0], 1)
+    for meta_var in meta_varlist:
+        meta_df[meta_var] = meta_df['content_id'].map(
+            dict(zip(labelled_level2['content_id'], labelled_level2[meta_var]))
+        )
 
-scaler = MinMaxScaler()
-first_published_scaled = scaler.fit_transform(first_published)
+    # convert nans to empty strings for labelencoder types
+    meta_df = meta_df.replace(np.nan, '', regex=True)
 
-last_year = np.where(
-    (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-    < np.timedelta64(1, 'Y'), 1, 0)
+    dict_of_onehot_encodings = {}
+    for metavar in meta_varlist:
+        if metavar != "first_published_at":
+            print(metavar)
+            dict_of_onehot_encodings[metavar] = to_cat_to_hot(meta_df, metavar)
 
-last_2years = np.where(
-    (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-    < np.timedelta64(2, 'Y'), 1, 0)
+    # First_published_at:
+    # Convert to timestamp, then scale between 0 and 1 so same weight as binary vars
+    meta_df['first_published_at'] = pd.to_datetime(meta_df['first_published_at'])
+    first_published = np.array(
+        meta_df['first_published_at']
+    ).reshape(
+        meta_df['first_published_at'].shape[0],
+        1
+    )
 
-last_5years = np.where(
-    (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-    < np.timedelta64(5, 'Y'), 1, 0)
+    scaler = MinMaxScaler()
+    first_published_scaled = scaler.fit_transform(first_published)
 
-olderthan5 = np.where(
-    (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-    > np.timedelta64(5, 'Y'), 1, 0)
+    last_year = np.where(
+        (
+            (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+            <
+            np.timedelta64(1, 'Y')
+        ),
+        1,
+        0
+    )
 
-meta = np.concatenate((dict_of_onehot_encodings['document_type'],
-                       dict_of_onehot_encodings['primary_publishing_organisation'],
-                       dict_of_onehot_encodings['publishing_app'],
-                       first_published_scaled,
-                       last_year,
-                       last_2years,
-                       last_5years,
-                       olderthan5),
-                      axis=1)
+    last_2years = np.where(
+        (
+            (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+            <
+            np.timedelta64(2, 'Y')
+        ),
+        1,
+        0
+    )
+
+    last_5years = np.where(
+        (
+            (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+            <
+            np.timedelta64(5, 'Y')
+        ),
+        1,
+        0
+    )
+
+    olderthan5 = np.where(
+        (
+            (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+            >
+            np.timedelta64(5, 'Y')
+        ),
+        1,
+        0
+    )
+
+    meta = np.concatenate(
+        (dict_of_onehot_encodings['document_type'],
+         dict_of_onehot_encodings['primary_publishing_organisation'],
+         dict_of_onehot_encodings['publishing_app'],
+         first_published_scaled,
+         last_year,
+         last_2years,
+         last_5years,
+         olderthan5),
+        axis=1
+    )
+
+    return meta
+
+meta = create_meta(balanced_df)
 
 # **** TOKENIZE TEXT ********************
 # ************************************
