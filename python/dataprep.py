@@ -362,7 +362,7 @@ np.savez(os.path.join(DATADIR,'train_arrays.npz'),
                     title=title_train,
                     # title_tfidf=title_tfidf_train,
                     # desc_tfidf=description_tfidf_train,
-                    desc=desc_train,
+                    desc=description_train,
                     y=y_train)
 
 print('saving dev arrays')
@@ -372,7 +372,7 @@ np.savez(os.path.join(DATADIR,'dev_arrays.npz'),
                     title=title_dev,
                     # title_tfidf=title_tfidf_dev,
                     # desc_tfidf=description_tfidf_dev,
-                    desc=desc_dev,
+                    desc=description_dev,
                     y=y_dev)
 
 print('saving test arrays')
@@ -382,7 +382,7 @@ np.savez(os.path.join(DATADIR,'test_arrays.npz'),
                     title=title_test,
                     # title_tfidf=title_tfidf_test,
                     # desc_tfidf=description_tfidf_test,
-                    desc=desc_test,
+                    desc=description_test,
                     y=y_test)
 
 id_train, id_dev, id_test = split(meta_df['content_id'], splits)
