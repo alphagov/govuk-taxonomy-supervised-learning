@@ -138,6 +138,8 @@ def upsample_low_support_taxons(binary_multilabel):
     upsampled_training = shuffle(upsampled_training, random_state=0)
 
     balanced_df = pd.concat([binary_multilabel, upsampled_training])
+    balanced_df.astype(int)
+    balanced_df.columns.astype(int)
 
     return balanced_df
 
@@ -146,8 +148,6 @@ balanced_df = upsample_low_support_taxons(binary_multilabel)
 # ********** CREATE Y ARRAY **************
 # ****************************************
 
-balanced_df.astype(int)
-balanced_df.columns.astype(int)
 # convert columns to an array. Each row represents a content item, each column an individual taxon
 binary_multilabel = balanced_df[list(balanced_df.columns)].values
 print('Example row of multilabel array {}'.format(binary_multilabel[2]))
