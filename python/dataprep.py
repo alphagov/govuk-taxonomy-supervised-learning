@@ -166,9 +166,9 @@ def to_cat_to_hot(meta_df, var):
     return to_categorical(meta_df[metavar_cat])
 
 
-def create_meta(dataframe):
+def create_meta(dataframe_column):
     # extract content_id index to df
-    meta_df = pd.DataFrame(dataframe.index.get_level_values('content_id'))
+    meta_df = pd.DataFrame(dataframe_column)
     meta_varlist = (
         'document_type',
         'first_published_at',
@@ -258,7 +258,7 @@ def create_meta(dataframe):
     return sparse.csr_matrix(meta_np)
 
 
-meta = create_meta(balanced_df)
+meta = create_meta(balanced_df.index.get_level_values('content_id'))
 
 
 # **** TOKENIZE TEXT ********************
@@ -267,7 +267,7 @@ meta = create_meta(balanced_df)
 # Load tokenizers, fitted on both labelled and unlabelled data from file
 # created in clean_content.py
 
-def create_padded_combined_text_sequences():
+def create_padded_combined_text_sequences(text_data):
     tokenizer_combined_text = tokenizing. \
         load_tokenizer_from_file(os.path.join(DATADIR, "combined_text_tokenizer.json"))
 
@@ -275,7 +275,7 @@ def create_padded_combined_text_sequences():
     print('converting combined text to sequences')
     tokenizer_combined_text.num_words = 20000
     combined_text_sequences = tokenizer_combined_text.texts_to_sequences(
-        balanced_df.index.get_level_values('combined_text')
+        text_data
     )
 
     print('padding combined text sequences')
@@ -288,18 +288,18 @@ def create_padded_combined_text_sequences():
     return combined_text_sequences_padded
 
 
-combined_text_sequences_padded = create_padded_combined_text_sequences()
+combined_text_sequences_padded = create_padded_combined_text_sequences(balanced_df.index.get_level_values('combined_text'))
 
 
 def create_one_hot_matrix_for_column(
         tokenizer,
-        column_name,
+        column_data,
         num_words,
 ):
     tokenizer.num_words = num_words
     return sparse.csr_matrix(
         tokenizer.texts_to_matrix(
-            balanced_df.index.get_level_values(column_name)
+            column_data
         )
     )
 
@@ -314,7 +314,7 @@ title_onehot = create_one_hot_matrix_for_column(
     tokenizing.load_tokenizer_from_file(
         os.path.join(DATADIR, "title_tokenizer.json")
     ),
-    'title',
+    balanced_df.index.get_level_values('title'),
     num_words=10000,
 )
 
@@ -326,7 +326,7 @@ description_onehot = create_one_hot_matrix_for_column(
     tokenizing.load_tokenizer_from_file(
         os.path.join(DATADIR, "description_tokenizer.json")
     ),
-    'description',
+    balanced_df.index.get_level_values('description'),
     num_words=10000,
 )
 
