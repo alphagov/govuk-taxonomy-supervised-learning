@@ -1,19 +1,21 @@
 # coding: utf-8
 
-import pandas as pd
-import numpy as np
 import os
-from sklearn.preprocessing import LabelEncoder
-import tensorflow as tf
-from sklearn.utils import shuffle, resample
-import tokenizing
-from keras.preprocessing.sequence import pad_sequences
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from keras.utils import to_categorical
-from sklearn.exceptions import DataConversionWarning
-import warnings
-from scipy import sparse
 import time
+import warnings
+
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from keras.preprocessing.sequence import pad_sequences
+from keras.utils import to_categorical
+from scipy import sparse
+from sklearn.exceptions import DataConversionWarning
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.utils import shuffle, resample
+
+import tokenizing
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
@@ -25,8 +27,9 @@ DATADIR = os.getenv('DATADIR')
 
 # reshape to wide per taxon and keep the combined text so indexing is consistent when splitting X from Y
 
-def create_binary_multilabel(labelled_level2):
-    multilabel = labelled_level2.pivot_table(
+
+def create_binary_multilabel(dataframe):
+    multilabel = dataframe.pivot_table(
         index=[
             'content_id',
             'combined_text',
@@ -37,22 +40,26 @@ def create_binary_multilabel(labelled_level2):
         values='num_taxon_per_content'
     )
 
-    print('labelled_level2 shape: {}'.format(labelled_level2.shape))
+    print('labelled_level2 shape: {}'.format(dataframe.shape))
     print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
 
     multilabel.columns.astype('str')
 
     # THIS IS WHY INDEXING IS NOT ZERO-BASED convert the number_of_taxons_per_content values to 1, meaning there was an
     # entry for this taxon and this content_id, 0 otherwise
-    binary_multilabel = multilabel.notnull().astype('int')
+    binary_multi = multilabel.notnull().astype('int')
 
     # shuffle to ensure no order is captured in train/dev/test splits
-    binary_multilabel = shuffle(binary_multilabel, random_state=0)
 
-    # delete the 1st order column name (='level2taxon') for later calls to column names (now string numbers of each taxon)
-    del binary_multilabel.columns.name
+    binary_multi = shuffle(binary_multi, random_state=0)
 
-    return binary_multilabel
+    # delete the 1st order column name (='level2taxon') for later calls to column names (now string numbers of each
+    # taxon)
+
+    del binary_multi.columns.name
+
+    return binary_multi
+
 
 def upsample_low_support_taxons(dataframe):
     # extract indices of training samples, which are to be upsampled
@@ -210,13 +217,14 @@ def create_padded_combined_text_sequences(text_data):
     )
 
     print('Padding combined text sequences')
-    combined_text_sequences_padded = pad_sequences(
+    text_sequences_padded = pad_sequences(
         combined_text_sequences,
         maxlen=1000,  # MAX_SEQUENCE_LENGTH
         padding='post', truncating='post'
     )
 
-    return combined_text_sequences_padded
+    return text_sequences_padded
+
 
 def create_one_hot_matrix_for_column(
         tokenizer,
@@ -230,6 +238,7 @@ def create_one_hot_matrix_for_column(
         )
     )
 
+
 def split(data_to_split, split_indices):
     """split data along axis=0 (rows) at indices designated in split_indices"""
     return tuple(
@@ -240,18 +249,18 @@ def split(data_to_split, split_indices):
 
 def process_split(
         split_name,
-        split,
-        data,
+        split_i,
+        data_i,
 ):
-    start, end = split
+    start, end = split_i
 
     split_data = {
-        name: df[start:end]
-        for name, df in data.items()
+        key: df[start:end]
+        for key, df in data_i.items()
     }
 
-    for name, df in split_data.items():
-        print("  {}: {}".format(name, df.shape))
+    for key, df in split_data.items():
+        print("  {}: {}".format(key, df.shape))
 
     np.savez(
         os.path.join(DATADIR, '{}_arrays.npz'.format(split_name)),
@@ -260,7 +269,7 @@ def process_split(
 
 
 def load_labelled_level2():
-    labelled_level2 = pd.read_csv(
+    dataframe = pd.read_csv(
         os.path.join(DATADIR, 'labelled_level2.csv.gz'),
         dtype=object,
         compression='gzip'
@@ -268,25 +277,25 @@ def load_labelled_level2():
 
     # Create World taxon in case any items not identified
     # through doc type in clean_content are still present
-    labelled_level2.loc[labelled_level2['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
+    dataframe.loc[dataframe['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
 
     # **** TAXONS TO CATEGORICAL -> DICT **********
     # *********************************************
 
     # creating categorical variable for level2taxons from values
-    labelled_level2['level2taxon'] = labelled_level2['level2taxon'].astype('category')
+    dataframe['level2taxon'] = dataframe['level2taxon'].astype('category')
 
     # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
-    labelled_level2['level2taxon_code'] = labelled_level2.level2taxon.astype('category').cat.codes + 1
+    dataframe['level2taxon_code'] = dataframe.level2taxon.astype('category').cat.codes + 1
 
-    print('Number of unique level2taxons: {}'.format(labelled_level2.level2taxon.nunique()))
+    print('Number of unique level2taxons: {}'.format(dataframe.level2taxon.nunique()))
 
     # count the number of taxons per content item into new column
-    labelled_level2['num_taxon_per_content'] = labelled_level2.groupby(
+    dataframe['num_taxon_per_content'] = dataframe.groupby(
         ["content_id"]
     )['content_id'].transform("count")
 
-    return labelled_level2
+    return dataframe
 
 
 if __name__ == "__main__":
@@ -322,7 +331,6 @@ if __name__ == "__main__":
     print("[{}] Vectorizing metadata".format(time.strftime("%H:%M:%S")))
 
     meta = create_meta(balanced_df.index.get_level_values('content_id'), labelled_level2)
-
 
     # **** TOKENIZE TEXT ********************
     # ************************************
