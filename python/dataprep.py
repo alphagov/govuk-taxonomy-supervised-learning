@@ -95,6 +95,7 @@ def upsample_low_support_taxons(dataframe):
 
     return balanced, upsampled_training.shape[0]
 
+
 def to_cat_to_hot(meta_df, var):
     """one hot encode each metavar"""
     encoder = LabelEncoder()
@@ -103,7 +104,8 @@ def to_cat_to_hot(meta_df, var):
     tf.cast(meta_df[metavar_cat], tf.float32)
     return to_categorical(meta_df[metavar_cat])
 
-def create_meta(dataframe_column):
+
+def create_meta(dataframe_column, orig_df):
     # extract content_id index to df
     meta_df = pd.DataFrame(dataframe_column)
     meta_varlist = (
@@ -115,7 +117,7 @@ def create_meta(dataframe_column):
 
     for meta_var in meta_varlist:
         meta_df[meta_var] = meta_df['content_id'].map(
-            dict(zip(labelled_level2['content_id'], labelled_level2[meta_var]))
+            dict(zip(orig_df['content_id'], orig_df[meta_var]))
         )
 
     # convert nans to empty strings for labelencoder types
@@ -193,6 +195,7 @@ def create_meta(dataframe_column):
     )
 
     return sparse.csr_matrix(meta_np)
+
 
 def create_padded_combined_text_sequences(text_data):
     tokenizer_combined_text = tokenizing. \
@@ -305,7 +308,7 @@ if __name__ == "__main__":
     size_train += upsample_size
     print("New size of training set: {}".format(size_train))
 
-    meta = create_meta(balanced_df.index.get_level_values('content_id'))
+    meta = create_meta(balanced_df.index.get_level_values('content_id'), labelled_level2)
 
 
     # **** TOKENIZE TEXT ********************
