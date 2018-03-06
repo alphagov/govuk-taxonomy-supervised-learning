@@ -14,12 +14,15 @@ warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 DATADIR = os.getenv('DATADIR')
 
 if __name__ == "__main__":
+
+    print("Loading data")
     new_content = pd.read_csv(
         os.path.join(DATADIR, 'new_content.csv.gz'),
         dtype=object,
         compression='gzip'
     )
 
+    print("Dropping columns")
     new_content.drop(['content_purpose_document_supertype', 'content_purpose_subgroup',
                       'content_purpose_supergroup', 'email_document_supertype',
                       'government_document_supertype', 'navigation_document_supertype',
@@ -47,7 +50,7 @@ if __name__ == "__main__":
     # which are one-hot encoded for the 10,000 most common words
     # to be fed in after the flatten layer (through fully connected layers)
 
-    print('one-hot encoding title sequences')
+    print('One-hot encoding title sequences')
 
     title_onehot = dataprep.create_one_hot_matrix_for_column(
         tokenizing.load_tokenizer_from_file(
@@ -57,9 +60,9 @@ if __name__ == "__main__":
         num_words=10000,
     )
 
-    print('title_onehot shape {}'.format(title_onehot.shape))
+    print('Title_onehot shape {}'.format(title_onehot.shape))
 
-    print('one-hot encoding description sequences')
+    print('One-hot encoding description sequences')
 
     description_onehot = dataprep.create_one_hot_matrix_for_column(
         tokenizing.load_tokenizer_from_file(
@@ -69,9 +72,9 @@ if __name__ == "__main__":
         num_words=10000,
     )
 
-    print('description_onehot shape {}'.format(description_onehot.shape))
+    print('Description_onehot shape {}'.format(description_onehot.shape))
 
-    print('producing arrays for new_content')
+    print('Producing arrays for new_content')
 
     data = {
         "x": combined_text_sequences_padded,
