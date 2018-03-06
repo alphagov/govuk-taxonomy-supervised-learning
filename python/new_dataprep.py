@@ -8,6 +8,7 @@ from sklearn.exceptions import DataConversionWarning
 
 import dataprep
 import tokenizing
+import time
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
@@ -15,14 +16,14 @@ DATADIR = os.getenv('DATADIR')
 
 if __name__ == "__main__":
 
-    print("Loading data")
+    print("[{}] Loading data".format(time.strftime("%H:%M:%S")))
     new_content = pd.read_csv(
         os.path.join(DATADIR, 'new_content.csv.gz'),
         dtype=object,
         compression='gzip'
     )
 
-    print("Dropping columns")
+    print("[{}] Dropping columns".format(time.strftime("%H:%M:%S")))
     new_content.drop(['content_purpose_document_supertype', 'content_purpose_subgroup',
                       'content_purpose_supergroup', 'email_document_supertype',
                       'government_document_supertype', 'navigation_document_supertype',
@@ -32,7 +33,7 @@ if __name__ == "__main__":
     # **** VECTORIZE META ********************
     # ************************************
 
-    print("Vectorizing metadata")
+    print("[{}] Vectorizing metadata".format(time.strftime("%H:%M:%S")))
     meta = dataprep.create_meta(new_content['content_id'], new_content)
 
     # **** TOKENIZE TEXT ********************
@@ -41,7 +42,7 @@ if __name__ == "__main__":
     # Load tokenizers, fitted on both labelled and unlabelled data from file
     # created in clean_content.py
 
-    print("Tokenizing combined_text")
+    print("[{}] Tokenizing combined_text".format(time.strftime("%H:%M:%S")))
 
     combined_text_sequences_padded = dataprep.create_padded_combined_text_sequences(
         new_content['combined_text'])
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     # which are one-hot encoded for the 10,000 most common words
     # to be fed in after the flatten layer (through fully connected layers)
 
-    print('One-hot encoding title sequences')
+    print('[{}] One-hot encoding title sequences'.format(time.strftime("%H:%M:%S")))
 
     title_onehot = dataprep.create_one_hot_matrix_for_column(
         tokenizing.load_tokenizer_from_file(
@@ -62,7 +63,7 @@ if __name__ == "__main__":
 
     print('Title_onehot shape {}'.format(title_onehot.shape))
 
-    print('One-hot encoding description sequences')
+    print('[{}] One-hot encoding description sequences'.format(time.strftime("%H:%M:%S")))
 
     description_onehot = dataprep.create_one_hot_matrix_for_column(
         tokenizing.load_tokenizer_from_file(
@@ -74,7 +75,7 @@ if __name__ == "__main__":
 
     print('Description_onehot shape {}'.format(description_onehot.shape))
 
-    print('Producing arrays for new_content')
+    print('[{}] Producing arrays for new_content'.format(time.strftime("%H:%M:%S")))
 
     data = {
         "x": combined_text_sequences_padded,
@@ -86,4 +87,4 @@ if __name__ == "__main__":
 
     dataprep.process_split('predict', (0, new_content.shape[0]), data)
 
-    print("Finished")
+    print("[{}] Finished".format(time.strftime("%H:%M:%S")))
