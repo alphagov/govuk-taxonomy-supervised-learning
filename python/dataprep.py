@@ -3,7 +3,7 @@
 import os
 import time
 import warnings
-
+import logging.config
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -40,8 +40,8 @@ def create_binary_multilabel(dataframe):
         values='num_taxon_per_content'
     )
 
-    print('labelled_level2 shape: {}'.format(dataframe.shape))
-    print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
+    logger.info('labelled_level2 shape: {}'.format(dataframe.shape))
+    logger.info('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
 
     multilabel.columns.astype('str')
 
@@ -76,26 +76,26 @@ def upsample_low_support_taxons(dataframe):
                                                ][:size_train]
 
         if training_samples_tagged_to_taxon.shape[0] < 500:
-            print("Taxon code:", taxon)
-            print("SMALL SUPPORT:", training_samples_tagged_to_taxon.shape[0])
+            logger.info("Taxon code: %s", taxon)
+            logger.info("SMALL SUPPORT: %s", training_samples_tagged_to_taxon.shape[0])
             df_minority = training_samples_tagged_to_taxon
             if not df_minority.empty:
                 # Upsample minority class
-                print(df_minority.shape)
+                logger.info(df_minority.shape)
                 df_minority_upsampled = resample(df_minority,
                                                  replace=True,  # sample with replacement
                                                  n_samples=(500),
                                                  # to match majority class, switch to max_content_freq if works
                                                  random_state=123)  # reproducible results
-                print("FIRST 5 IDs:", [df_minority_upsampled.index[i][0] for i in range(0, 5)])
+                logger.info("FIRST 5 IDs: %s", [df_minority_upsampled.index[i][0] for i in range(0, 5)])
                 # Combine majority class with upsampled minority class
                 upsampled_training = pd.concat([upsampled_training, df_minority_upsampled])
                 # Display new shape
-                print("UPSAMPLING:", upsampled_training.shape)
+                logger.info("UPSAMPLING: %s", upsampled_training.shape)
 
     upsampled_training = shuffle(upsampled_training, random_state=0)
 
-    print("Size of upsampled_training: {}".format(upsampled_training.shape[0]))
+    logger.info("Size of upsampled_training: {}".format(upsampled_training.shape[0]))
 
     balanced = pd.concat([upsampled_training, dataframe])
     balanced.astype(int)
@@ -132,9 +132,12 @@ def create_meta(dataframe_column, orig_df):
     meta_df = meta_df.replace(np.nan, '', regex=True)
 
     dict_of_onehot_encodings = {}
+
+    logging.info("Encoding metadata")
+
     for metavar in meta_varlist:
         if metavar != "first_published_at":
-            print(metavar)
+            logging.info(metavar)
             dict_of_onehot_encodings[metavar] = to_cat_to_hot(meta_df, metavar)
 
     # First_published_at:
@@ -210,13 +213,13 @@ def create_padded_combined_text_sequences(text_data):
         load_tokenizer_from_file(os.path.join(DATADIR, "combined_text_tokenizer.json"))
 
     # Prepare combined text data for input into embedding layer
-    print('Converting combined text to sequences')
+    logging.info('Converting combined text to sequences')
     tokenizer_combined_text.num_words = 20000
     combined_text_sequences = tokenizer_combined_text.texts_to_sequences(
         text_data
     )
 
-    print('Padding combined text sequences')
+    logging.info('Padding combined text sequences')
     text_sequences_padded = pad_sequences(
         combined_text_sequences,
         maxlen=1000,  # MAX_SEQUENCE_LENGTH
@@ -260,7 +263,7 @@ def process_split(
     }
 
     for key, df in split_data.items():
-        print("  {}: {}".format(key, df.shape))
+        print("{}: {}".format(key, df.shape))
 
     np.savez(
         os.path.join(DATADIR, '{}_arrays.npz'.format(split_name)),
@@ -288,7 +291,7 @@ def load_labelled_level2():
     # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
     dataframe['level2taxon_code'] = dataframe.level2taxon.astype('category').cat.codes + 1
 
-    print('Number of unique level2taxons: {}'.format(dataframe.level2taxon.nunique()))
+    logging.info('Number of unique level2taxons: {}'.format(dataframe.level2taxon.nunique()))
 
     # count the number of taxons per content item into new column
     dataframe['num_taxon_per_content'] = dataframe.groupby(
@@ -300,10 +303,14 @@ def load_labelled_level2():
 
 if __name__ == "__main__":
 
-    print("[{}] Loading data".format(time.strftime("%H:%M:%S")))
+    LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
+    logging.config.fileConfig(LOGGING_CONFIG)
+    logger = logging.getLogger('create_new')
+
+    logger.info('Loading data')
     labelled_level2 = load_labelled_level2()
 
-    print("[{}] Creating multilabel dataframe".format(time.strftime("%H:%M:%S")))
+    logger.info('Creating multilabel dataframe')
     binary_multilabel = create_binary_multilabel(labelled_level2)
 
     # ***** RESAMPLING OF MINORITY TAXONS **************
@@ -315,20 +322,20 @@ if __name__ == "__main__":
     size_before_resample = binary_multilabel.shape[0]
 
     size_train = int(0.8 * size_before_resample)  # train split
-    print('Size of train set:', size_train)
+    logging.info('Size of train set: %s', size_train)
 
     size_dev = int(0.1 * size_before_resample)  # test split
-    print('Size of dev/test sets:', size_dev)
+    logging.info('Size of dev/test sets: %s', size_dev)
 
-    print("[{}] Upsample low support taxons".format(time.strftime("%H:%M:%S")))
+    logger.info('Upsample low support taxons')
 
     balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel)
 
     size_train += upsample_size
 
-    print("New size of training set: {}".format(size_train))
+    logger.info("New size of training set: {}".format(size_train))
 
-    print("[{}] Vectorizing metadata".format(time.strftime("%H:%M:%S")))
+    logger.info('Vectorizing metadata')
 
     meta = create_meta(balanced_df.index.get_level_values('content_id'), labelled_level2)
 
@@ -338,7 +345,7 @@ if __name__ == "__main__":
     # Load tokenizers, fitted on both labelled and unlabelled data from file
     # created in clean_content.py
 
-    print("[{}] Tokenizing combined_text".format(time.strftime("%H:%M:%S")))
+    logger.info('Tokenizing combined_text')
 
     combined_text_sequences_padded = create_padded_combined_text_sequences(
         balanced_df.index.get_level_values('combined_text')
@@ -348,7 +355,7 @@ if __name__ == "__main__":
     # which are one-hot encoded for the 10,000 most common words
     # to be fed in after the flatten layer (through fully connected layers)
 
-    print('[{}] One-hot encoding title sequences'.format(time.strftime("%H:%M:%S")))
+    logging.info('One-hot encoding title sequences')
 
     title_onehot = create_one_hot_matrix_for_column(
         tokenizing.load_tokenizer_from_file(
@@ -358,9 +365,9 @@ if __name__ == "__main__":
         num_words=10000,
     )
 
-    print('Title_onehot shape {}'.format(title_onehot.shape))
+    logger.info('Title_onehot shape {}'.format(title_onehot.shape))
 
-    print('[{}] One-hot encoding description sequences'.format(time.strftime("%H:%M:%S")))
+    logger.info('One-hot encoding description sequences')
 
     description_onehot = create_one_hot_matrix_for_column(
         tokenizing.load_tokenizer_from_file(
@@ -370,21 +377,22 @@ if __name__ == "__main__":
         num_words=10000,
     )
 
-    print('Description_onehot shape {}'.format(description_onehot.shape))
+    logger.info('Description_onehot shape')
 
-    print('[{}] Train/dev/test splitting'.format(time.strftime("%H:%M:%S")))
+    logger.info('Train/dev/test splitting')
 
     end_dev = size_train + size_dev
-    print('end_dev ={}'.format(end_dev))
+
+    logger.info('end_dev ={}'.format(end_dev))
     # assign the indices for separating the original (pre-sampled) data into
     # train/dev/test
     splits = [(0, size_train), (size_train, end_dev), (end_dev, balanced_df.shape[0])]
-    print('splits ={}'.format(splits))
+    logger.info('splits ={}'.format(splits))
 
     # convert columns to an array. Each row represents a content item,
     # each column an individual taxon
     binary_multilabel = balanced_df[list(balanced_df.columns)].values
-    print('Example row of multilabel array {}'.format(binary_multilabel[2]))
+    logger.info('Example row of multilabel array {}'.format(binary_multilabel[2]))
 
     data = {
         "x": combined_text_sequences_padded,
@@ -396,11 +404,11 @@ if __name__ == "__main__":
     }
 
     for split, name in zip(splits, ('train', 'dev', 'test')):
-        print("Generating {} split".format(name))
+        logger.info("Generating {} split".format(name))
         process_split(
             name,
             split,
             data
         )
 
-    print("[{}] Finished".format(time.strftime("%H:%M:%S")))
+    logger.info('Finished')
