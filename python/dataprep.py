@@ -52,6 +52,7 @@ print('Number of unique level2taxons: {}'.format(labelled_level2.level2taxon.nun
 # count the number of taxons per content item into new column
 labelled_level2['num_taxon_per_content'] = labelled_level2.groupby(["content_id"])['content_id'].transform("count")
 
+
 # **** RESHAPE data long -> wide by taxon *******
 # ***********************************************
 
@@ -86,6 +87,7 @@ def create_binary_multilabel(labelled_level2):
 
     return binary_multilabel
 
+
 binary_multilabel = create_binary_multilabel(labelled_level2)
 
 # ***** RESAMPLING OF MINORITY TAXONS **************
@@ -103,19 +105,19 @@ size_dev = int(0.1 * size_before_resample)  # test split
 print('Size of dev/test sets:', size_dev)
 
 
-def upsample_low_support_taxons(binary_multilabel, size_train):
-
+def upsample_low_support_taxons(dataframe):
     # extract indices of training samples, which are to be upsampled
 
-    training_indices = [binary_multilabel.index[i][0] for i in range(0, size_train)]
+    training_indices = [dataframe.index[i][0] for i in range(0, size_train)]
 
     upsampled_training = pd.DataFrame()
-    last_taxon = len(binary_multilabel.columns) + 1
+    last_taxon = len(dataframe.columns) + 1
 
     for taxon in range(1, last_taxon):
-        training_samples_tagged_to_taxon = binary_multilabel[
-            binary_multilabel[taxon] == 1
-        ][:size_train]
+
+        training_samples_tagged_to_taxon = dataframe[
+                                               dataframe[taxon] == 1
+                                               ][:size_train]
 
         if training_samples_tagged_to_taxon.shape[0] < 500:
             print("Taxon code:", taxon, "Taxon name:", labels_index[taxon])
@@ -138,17 +140,18 @@ def upsample_low_support_taxons(binary_multilabel, size_train):
     upsampled_training = shuffle(upsampled_training, random_state=0)
 
     print("Size of upsampled_training: {}".format(upsampled_training.shape[0]))
-    size_train += upsampled_training.shape[0]
 
-    balanced_df = pd.concat([upsampled_training, binary_multilabel])
-    balanced_df.astype(int)
-    balanced_df.columns.astype(int)
+    balanced = pd.concat([upsampled_training, dataframe])
+    balanced.astype(int)
+    balanced.columns.astype(int)
 
-    return balanced_df, upsampled_training.shape[0]
+    return balanced, upsampled_training.shape[0]
 
-balanced_df,upsample_size = upsample_low_support_taxons(binary_multilabel, size_train)
+
+balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel)
 size_train += upsample_size
 print("New size of training set: {}".format(size_train))
+
 
 # ******* Metadata ***************
 # ********************************
@@ -162,10 +165,10 @@ def to_cat_to_hot(meta_df, var):
     tf.cast(meta_df[metavar_cat], tf.float32)
     return to_categorical(meta_df[metavar_cat])
 
-def create_meta(balanced_df):
 
+def create_meta(dataframe):
     # extract content_id index to df
-    meta_df = pd.DataFrame(balanced_df.index.get_level_values('content_id'))
+    meta_df = pd.DataFrame(dataframe.index.get_level_values('content_id'))
     meta_varlist = (
         'document_type',
         'first_published_at',
@@ -202,9 +205,9 @@ def create_meta(balanced_df):
 
     last_year = np.where(
         (
-            (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-            <
-            np.timedelta64(1, 'Y')
+                (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+                <
+                np.timedelta64(1, 'Y')
         ),
         1,
         0
@@ -212,9 +215,9 @@ def create_meta(balanced_df):
 
     last_2years = np.where(
         (
-            (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-            <
-            np.timedelta64(2, 'Y')
+                (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+                <
+                np.timedelta64(2, 'Y')
         ),
         1,
         0
@@ -222,9 +225,9 @@ def create_meta(balanced_df):
 
     last_5years = np.where(
         (
-            (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-            <
-            np.timedelta64(5, 'Y')
+                (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+                <
+                np.timedelta64(5, 'Y')
         ),
         1,
         0
@@ -232,15 +235,15 @@ def create_meta(balanced_df):
 
     olderthan5 = np.where(
         (
-            (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-            >
-            np.timedelta64(5, 'Y')
+                (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+                >
+                np.timedelta64(5, 'Y')
         ),
         1,
         0
     )
 
-    meta = np.concatenate(
+    meta_np = np.concatenate(
         (dict_of_onehot_encodings['document_type'],
          dict_of_onehot_encodings['primary_publishing_organisation'],
          dict_of_onehot_encodings['publishing_app'],
@@ -252,9 +255,11 @@ def create_meta(balanced_df):
         axis=1
     )
 
-    return sparse.csr_matrix(meta)
+    return sparse.csr_matrix(meta_np)
+
 
 meta = create_meta(balanced_df)
+
 
 # **** TOKENIZE TEXT ********************
 # ************************************
@@ -262,8 +267,8 @@ meta = create_meta(balanced_df)
 # Load tokenizers, fitted on both labelled and unlabelled data from file
 # created in clean_content.py
 
-def create_passed_combined_text_sequences():
-    tokenizer_combined_text = tokenizing.\
+def create_padded_combined_text_sequences():
+    tokenizer_combined_text = tokenizing. \
         load_tokenizer_from_file(os.path.join(DATADIR, "combined_text_tokenizer.json"))
 
     # Prepare combined text data for input into embedding layer
@@ -282,7 +287,9 @@ def create_passed_combined_text_sequences():
 
     return combined_text_sequences_padded
 
-combined_text_sequences_padded = create_passed_combined_text_sequences()
+
+combined_text_sequences_padded = create_padded_combined_text_sequences()
+
 
 def create_one_hot_matrix_for_column(
         tokenizer,
@@ -296,7 +303,8 @@ def create_one_hot_matrix_for_column(
         )
     )
 
-# prepare title and description matrices, 
+
+# prepare title and description matrices,
 # which are one-hot encoded for the 10,000 most common words
 # to be fed in after the flatten layer (through fully connected layers)
 
@@ -304,7 +312,7 @@ print('one-hot encoding title sequences')
 
 title_onehot = create_one_hot_matrix_for_column(
     tokenizing.load_tokenizer_from_file(
-        os.path.join(DATADIR,"title_tokenizer.json")
+        os.path.join(DATADIR, "title_tokenizer.json")
     ),
     'title',
     num_words=10000,
@@ -316,13 +324,14 @@ print('one-hot encoding description sequences')
 
 description_onehot = create_one_hot_matrix_for_column(
     tokenizing.load_tokenizer_from_file(
-        os.path.join(DATADIR,"description_tokenizer.json")
+        os.path.join(DATADIR, "description_tokenizer.json")
     ),
     'description',
     num_words=10000,
 )
 
 print('description_onehot shape {}'.format(description_onehot.shape))
+
 
 # description_tfidf = tokenizer_description.texts_to_matrix(balanced_df.index.get_level_values('description'), 'tfidf')
 
@@ -341,6 +350,7 @@ def split(data_to_split, split_indices):
         for (start, end) in split_indices
     )
 
+
 print('train/dev/test splitting')
 
 end_dev = size_train + size_dev
@@ -349,6 +359,7 @@ print('end_dev ={}'.format(end_dev))
 # train/dev/test
 splits = [(0, size_train), (size_train, end_dev), (end_dev, balanced_df.shape[0])]
 print('splits ={}'.format(splits))
+
 
 def process_split(
         split_name,
@@ -363,9 +374,10 @@ def process_split(
     }
 
     np.savez(
-        os.path.join(DATADIR,'{}_arrays.npz'.format(split_name)),
+        os.path.join(DATADIR, '{}_arrays.npz'.format(split_name)),
         **split_data
     )
+
 
 # convert columns to an array. Each row represents a content item,
 # each column an individual taxon
