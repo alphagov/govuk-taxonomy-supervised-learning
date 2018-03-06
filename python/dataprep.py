@@ -13,6 +13,7 @@ from keras.utils import to_categorical
 from sklearn.exceptions import DataConversionWarning
 import warnings
 from scipy import sparse
+import time
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
@@ -202,13 +203,13 @@ def create_padded_combined_text_sequences(text_data):
         load_tokenizer_from_file(os.path.join(DATADIR, "combined_text_tokenizer.json"))
 
     # Prepare combined text data for input into embedding layer
-    print('converting combined text to sequences')
+    print('Converting combined text to sequences')
     tokenizer_combined_text.num_words = 20000
     combined_text_sequences = tokenizer_combined_text.texts_to_sequences(
         text_data
     )
 
-    print('padding combined text sequences')
+    print('Padding combined text sequences')
     combined_text_sequences_padded = pad_sequences(
         combined_text_sequences,
         maxlen=1000,  # MAX_SEQUENCE_LENGTH
@@ -236,6 +237,7 @@ def split(data_to_split, split_indices):
         for (start, end) in split_indices
     )
 
+
 def process_split(
         split_name,
         split,
@@ -255,6 +257,7 @@ def process_split(
         os.path.join(DATADIR, '{}_arrays.npz'.format(split_name)),
         **split_data
     )
+
 
 def load_labelled_level2():
     labelled_level2 = pd.read_csv(
@@ -285,9 +288,13 @@ def load_labelled_level2():
 
     return labelled_level2
 
+
 if __name__ == "__main__":
+
+    print("[{}] Loading data".format(time.strftime("%H:%M:%S")))
     labelled_level2 = load_labelled_level2()
 
+    print("[{}] Creating multilabel dataframe".format(time.strftime("%H:%M:%S")))
     binary_multilabel = create_binary_multilabel(labelled_level2)
 
     # ***** RESAMPLING OF MINORITY TAXONS **************
@@ -304,9 +311,15 @@ if __name__ == "__main__":
     size_dev = int(0.1 * size_before_resample)  # test split
     print('Size of dev/test sets:', size_dev)
 
+    print("[{}] Upsample low support taxons".format(time.strftime("%H:%M:%S")))
+
     balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel)
+
     size_train += upsample_size
+
     print("New size of training set: {}".format(size_train))
+
+    print("[{}] Vectorizing metadata".format(time.strftime("%H:%M:%S")))
 
     meta = create_meta(balanced_df.index.get_level_values('content_id'), labelled_level2)
 
@@ -317,6 +330,8 @@ if __name__ == "__main__":
     # Load tokenizers, fitted on both labelled and unlabelled data from file
     # created in clean_content.py
 
+    print("[{}] Tokenizing combined_text".format(time.strftime("%H:%M:%S")))
+
     combined_text_sequences_padded = create_padded_combined_text_sequences(
         balanced_df.index.get_level_values('combined_text')
     )
@@ -325,7 +340,7 @@ if __name__ == "__main__":
     # which are one-hot encoded for the 10,000 most common words
     # to be fed in after the flatten layer (through fully connected layers)
 
-    print('one-hot encoding title sequences')
+    print('[{}] One-hot encoding title sequences'.format(time.strftime("%H:%M:%S")))
 
     title_onehot = create_one_hot_matrix_for_column(
         tokenizing.load_tokenizer_from_file(
@@ -335,9 +350,9 @@ if __name__ == "__main__":
         num_words=10000,
     )
 
-    print('title_onehot shape {}'.format(title_onehot.shape))
+    print('Title_onehot shape {}'.format(title_onehot.shape))
 
-    print('one-hot encoding description sequences')
+    print('[{}] One-hot encoding description sequences'.format(time.strftime("%H:%M:%S")))
 
     description_onehot = create_one_hot_matrix_for_column(
         tokenizing.load_tokenizer_from_file(
@@ -347,9 +362,9 @@ if __name__ == "__main__":
         num_words=10000,
     )
 
-    print('description_onehot shape {}'.format(description_onehot.shape))
+    print('Description_onehot shape {}'.format(description_onehot.shape))
 
-    print('train/dev/test splitting')
+    print('[{}] Train/dev/test splitting'.format(time.strftime("%H:%M:%S")))
 
     end_dev = size_train + size_dev
     print('end_dev ={}'.format(end_dev))
@@ -380,4 +395,4 @@ if __name__ == "__main__":
             data
         )
 
-    print("Finished")
+    print("[{}] Finished".format(time.strftime("%H:%M:%S")))
