@@ -6,6 +6,7 @@ import warnings
 import pandas as pd
 from sklearn.exceptions import DataConversionWarning
 
+import logging.config
 import dataprep
 import tokenizing
 import time
@@ -16,14 +17,19 @@ DATADIR = os.getenv('DATADIR')
 
 if __name__ == "__main__":
 
-    print("[{}] Loading data".format(time.strftime("%H:%M:%S")))
+    LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
+    logging.config.fileConfig(LOGGING_CONFIG)
+    logger = logging.getLogger('create_new')
+
+    logger.info("Loading data")
     new_content = pd.read_csv(
         os.path.join(DATADIR, 'new_content.csv.gz'),
         dtype=object,
         compression='gzip'
     )
 
-    print("[{}] Dropping columns".format(time.strftime("%H:%M:%S")))
+    logger.info("Dropping columns")
+
     new_content.drop(['content_purpose_document_supertype', 'content_purpose_subgroup',
                       'content_purpose_supergroup', 'email_document_supertype',
                       'government_document_supertype', 'navigation_document_supertype',
@@ -33,7 +39,7 @@ if __name__ == "__main__":
     # **** VECTORIZE META ********************
     # ************************************
 
-    print("[{}] Vectorizing metadata".format(time.strftime("%H:%M:%S")))
+    logger.info("Vectorizing metadata")
     meta = dataprep.create_meta(new_content['content_id'], new_content)
 
     # **** TOKENIZE TEXT ********************
@@ -42,7 +48,7 @@ if __name__ == "__main__":
     # Load tokenizers, fitted on both labelled and unlabelled data from file
     # created in clean_content.py
 
-    print("[{}] Tokenizing combined_text".format(time.strftime("%H:%M:%S")))
+    logger.info("Tokenizing combined_text")
 
     combined_text_sequences_padded = dataprep.create_padded_combined_text_sequences(
         new_content['combined_text'])
@@ -51,7 +57,7 @@ if __name__ == "__main__":
     # which are one-hot encoded for the 10,000 most common words
     # to be fed in after the flatten layer (through fully connected layers)
 
-    print('[{}] One-hot encoding title sequences'.format(time.strftime("%H:%M:%S")))
+    logger.info('One-hot encoding title sequences')
 
     title_onehot = dataprep.create_one_hot_matrix_for_column(
         tokenizing.load_tokenizer_from_file(
@@ -61,9 +67,9 @@ if __name__ == "__main__":
         num_words=10000,
     )
 
-    print('Title_onehot shape {}'.format(title_onehot.shape))
+    logger.info('Title_onehot shape {}'.format(title_onehot.shape))
 
-    print('[{}] One-hot encoding description sequences'.format(time.strftime("%H:%M:%S")))
+    logger.info('One-hot encoding description sequences')
 
     description_onehot = dataprep.create_one_hot_matrix_for_column(
         tokenizing.load_tokenizer_from_file(
@@ -73,9 +79,9 @@ if __name__ == "__main__":
         num_words=10000,
     )
 
-    print('Description_onehot shape {}'.format(description_onehot.shape))
+    logger.info('Description_onehot shape %s', description_onehot.shape)
 
-    print('[{}] Producing arrays for new_content'.format(time.strftime("%H:%M:%S")))
+    logger.info('Producing arrays for new_content')
 
     data = {
         "x": combined_text_sequences_padded,
@@ -87,4 +93,4 @@ if __name__ == "__main__":
 
     dataprep.process_split('predict', (0, new_content.shape[0]), data)
 
-    print("[{}] Finished".format(time.strftime("%H:%M:%S")))
+    logger.info("Finished")
