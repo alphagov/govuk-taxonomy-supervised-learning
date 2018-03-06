@@ -144,9 +144,11 @@ def upsample_low_support_taxons(binary_multilabel, size_train):
     balanced_df.astype(int)
     balanced_df.columns.astype(int)
 
-    return balanced_df
+    return balanced_df, upsampled_training.shape[0]
 
-balanced_df = upsample_low_support_taxons(binary_multilabel, size_train)
+balanced_df,upsample_size = upsample_low_support_taxons(binary_multilabel, size_train)
+size_train += upsample_size
+print("New size of training set: {}".format(size_train))
 
 # ******* Metadata ***************
 # ********************************
