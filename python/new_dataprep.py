@@ -1,18 +1,19 @@
 # coding: utf-8
 
-import pandas as pd
-import numpy as np
 import os
-from sklearn.preprocessing import LabelEncoder
-import tensorflow as tf
-from sklearn.utils import shuffle, resample
-import tokenizing
-from keras.preprocessing.sequence import pad_sequences
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from keras.utils import to_categorical
-from sklearn.exceptions import DataConversionWarning
 import warnings
+
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from keras.utils import to_categorical
 from scipy import sparse
+from sklearn.exceptions import DataConversionWarning
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import MinMaxScaler
+
+import dataprep
+import tokenizing
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
@@ -25,13 +26,11 @@ new_content = pd.read_csv(
 )
 
 
-
-# **** RESHAPE data long -> wide by taxon *******
-# ***********************************************
-
-# reshape to wide per taxon and keep the combined text so indexing is consistent when splitting X from Y
-
-
+new_content.drop(['content_purpose_document_supertype', 'content_purpose_subgroup',
+                'content_purpose_supergroup', 'email_document_supertype',
+                'government_document_supertype', 'navigation_document_supertype',
+                'public_updated_at', 'search_user_need_document_supertype',
+                'taxon_id', 'taxons', 'user_journey_document_supertype', 'updated_at'], axis=1, inplace=True)
 
 # ******* Metadata ***************
 # ********************************
@@ -45,10 +44,11 @@ def to_cat_to_hot(meta_df, var):
     tf.cast(meta_df[metavar_cat], tf.float32)
     return to_categorical(meta_df[metavar_cat])
 
-def create_meta(balanced_df):
+
+def create_meta(dataframe_column):
 
     # extract content_id index to df
-    meta_df = pd.DataFrame(balanced_df.index.get_level_values('content_id'))
+    meta_df = pd.DataFrame(dataframe_column)
     meta_varlist = (
         'document_type',
         'first_published_at',
@@ -58,7 +58,7 @@ def create_meta(balanced_df):
 
     for meta_var in meta_varlist:
         meta_df[meta_var] = meta_df['content_id'].map(
-            dict(zip(labelled_level2['content_id'], labelled_level2[meta_var]))
+            dict(zip(new_content['content_id'], new_content[meta_var]))
         )
 
     # convert nans to empty strings for labelencoder types
@@ -123,7 +123,7 @@ def create_meta(balanced_df):
         0
     )
 
-    meta = np.concatenate(
+    meta_np = np.concatenate(
         (dict_of_onehot_encodings['document_type'],
          dict_of_onehot_encodings['primary_publishing_organisation'],
          dict_of_onehot_encodings['publishing_app'],
@@ -135,9 +135,10 @@ def create_meta(balanced_df):
         axis=1
     )
 
-    return sparse.csr_matrix(meta)
+    return sparse.csr_matrix(meta_np)
 
-meta = create_meta(balanced_df)
+
+meta = create_meta(new_content['content_id'])
 
 # **** TOKENIZE TEXT ********************
 # ************************************
@@ -145,39 +146,8 @@ meta = create_meta(balanced_df)
 # Load tokenizers, fitted on both labelled and unlabelled data from file
 # created in clean_content.py
 
-def create_passed_combined_text_sequences():
-    tokenizer_combined_text = tokenizing.\
-        load_tokenizer_from_file(os.path.join(DATADIR, "combined_text_tokenizer.json"))
 
-    # Prepare combined text data for input into embedding layer
-    print('converting combined text to sequences')
-    tokenizer_combined_text.num_words = 20000
-    combined_text_sequences = tokenizer_combined_text.texts_to_sequences(
-        balanced_df.index.get_level_values('combined_text')
-    )
-
-    print('padding combined text sequences')
-    combined_text_sequences_padded = pad_sequences(
-        combined_text_sequences,
-        maxlen=1000,  # MAX_SEQUENCE_LENGTH
-        padding='post', truncating='post'
-    )
-
-    return combined_text_sequences_padded
-
-combined_text_sequences_padded = create_passed_combined_text_sequences()
-
-def create_one_hot_matrix_for_column(
-        tokenizer,
-        column_name,
-        num_words,
-):
-    tokenizer.num_words = num_words
-    return sparse.csr_matrix(
-        tokenizer.texts_to_matrix(
-            balanced_df.index.get_level_values(column_name)
-        )
-    )
+combined_text_sequences_padded = dataprep.create_passed_combined_text_sequences()
 
 # prepare title and description matrices, 
 # which are one-hot encoded for the 10,000 most common words
@@ -185,7 +155,7 @@ def create_one_hot_matrix_for_column(
 
 print('one-hot encoding title sequences')
 
-title_onehot = create_one_hot_matrix_for_column(
+title_onehot = dataprep.create_one_hot_matrix_for_column(
     tokenizing.load_tokenizer_from_file(
         os.path.join(DATADIR,"title_tokenizer.json")
     ),
@@ -197,7 +167,7 @@ print('title_onehot shape {}'.format(title_onehot.shape))
 
 print('one-hot encoding description sequences')
 
-description_onehot = create_one_hot_matrix_for_column(
+description_onehot = dataprep.create_one_hot_matrix_for_column(
     tokenizing.load_tokenizer_from_file(
         os.path.join(DATADIR,"description_tokenizer.json")
     ),
@@ -207,62 +177,18 @@ description_onehot = create_one_hot_matrix_for_column(
 
 print('description_onehot shape {}'.format(description_onehot.shape))
 
-# description_tfidf = tokenizer_description.texts_to_matrix(balanced_df.index.get_level_values('description'), 'tfidf')
 
-# ******* TRAIN/DEV/TEST SPLIT DATA ****************
-# **************************************************
+print('producing arrays for new_content')
 
-# - Training data = 80%
-# - Development data = 10%
-# - Test data = 10%
-
-
-def split(data_to_split, split_indices):
-    """split data along axis=0 (rows) at indices designated in split_indices"""
-    return tuple(
-        data_to_split[start:end]
-        for (start, end) in split_indices
-    )
-
-print('train/dev/test splitting')
-
-# assign the indices for separating the original (pre-sampled) data into
-# train/dev/test
-splits = [(0, balanced_df.shape[0])]
-print('splits ={}'.format(splits))
-
-def process_split(
-        split_name,
-        split,
-        data,
-):
-    start, end = split
-
-    split_data = {
-        name: df[start:end]
-        for name, df in data.items()
-    }
-
-    np.savez(
-        os.path.join(DATADIR,'{}_arrays.npz'.format(split_name)),
-        **split_data
-    )
 
 data = {
     "x": combined_text_sequences_padded,
     "meta": meta,
     "title": title_onehot,
     "desc": description_onehot,
-    "y": sparse.csr_matrix(binary_multilabel),
-    "content_id": balanced_df.index.get_level_values('content_id'),
+    "content_id": new_content['content_id']
 }
 
-for split, name in zip(splits, ('predict')):
-    print("Generating {} split".format(name))
-    process_split(
-        name,
-        split,
-        data
-    )
+dataprep.process_split('predict', (0, new_content.shape[0]), data)
 
 print("Finished")
