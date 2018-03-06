@@ -53,24 +53,6 @@ def create_binary_multilabel(labelled_level2):
 
     return binary_multilabel
 
-
-binary_multilabel = create_binary_multilabel(labelled_level2)
-
-# ***** RESAMPLING OF MINORITY TAXONS **************
-# ****************************************************
-# - Training data = 80%
-# - Development data = 10%
-# - Test data = 10%
-
-size_before_resample = binary_multilabel.shape[0]
-
-size_train = int(0.8 * size_before_resample)  # train split
-print('Size of train set:', size_train)
-
-size_dev = int(0.1 * size_before_resample)  # test split
-print('Size of dev/test sets:', size_dev)
-
-
 def upsample_low_support_taxons(dataframe):
     # extract indices of training samples, which are to be upsampled
 
@@ -113,16 +95,6 @@ def upsample_low_support_taxons(dataframe):
 
     return balanced, upsampled_training.shape[0]
 
-
-balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel)
-size_train += upsample_size
-print("New size of training set: {}".format(size_train))
-
-
-# ******* Metadata ***************
-# ********************************
-
-
 def to_cat_to_hot(meta_df, var):
     """one hot encode each metavar"""
     encoder = LabelEncoder()
@@ -130,7 +102,6 @@ def to_cat_to_hot(meta_df, var):
     meta_df[metavar_cat] = encoder.fit_transform(meta_df[var])
     tf.cast(meta_df[metavar_cat], tf.float32)
     return to_categorical(meta_df[metavar_cat])
-
 
 def create_meta(dataframe_column):
     # extract content_id index to df
@@ -223,16 +194,6 @@ def create_meta(dataframe_column):
 
     return sparse.csr_matrix(meta_np)
 
-
-meta = create_meta(balanced_df.index.get_level_values('content_id'))
-
-
-# **** TOKENIZE TEXT ********************
-# ************************************
-
-# Load tokenizers, fitted on both labelled and unlabelled data from file
-# created in clean_content.py
-
 def create_padded_combined_text_sequences(text_data):
     tokenizer_combined_text = tokenizing. \
         load_tokenizer_from_file(os.path.join(DATADIR, "combined_text_tokenizer.json"))
@@ -253,10 +214,6 @@ def create_padded_combined_text_sequences(text_data):
 
     return combined_text_sequences_padded
 
-
-combined_text_sequences_padded = create_padded_combined_text_sequences(balanced_df.index.get_level_values('combined_text'))
-
-
 def create_one_hot_matrix_for_column(
         tokenizer,
         column_data,
@@ -269,63 +226,12 @@ def create_one_hot_matrix_for_column(
         )
     )
 
-
-# prepare title and description matrices,
-# which are one-hot encoded for the 10,000 most common words
-# to be fed in after the flatten layer (through fully connected layers)
-
-print('one-hot encoding title sequences')
-
-title_onehot = create_one_hot_matrix_for_column(
-    tokenizing.load_tokenizer_from_file(
-        os.path.join(DATADIR, "title_tokenizer.json")
-    ),
-    balanced_df.index.get_level_values('title'),
-    num_words=10000,
-)
-
-print('title_onehot shape {}'.format(title_onehot.shape))
-
-print('one-hot encoding description sequences')
-
-description_onehot = create_one_hot_matrix_for_column(
-    tokenizing.load_tokenizer_from_file(
-        os.path.join(DATADIR, "description_tokenizer.json")
-    ),
-    balanced_df.index.get_level_values('description'),
-    num_words=10000,
-)
-
-print('description_onehot shape {}'.format(description_onehot.shape))
-
-
-# description_tfidf = tokenizer_description.texts_to_matrix(balanced_df.index.get_level_values('description'), 'tfidf')
-
-# ******* TRAIN/DEV/TEST SPLIT DATA ****************
-# **************************************************
-
-# - Training data = 80%
-# - Development data = 10%
-# - Test data = 10%
-
-
 def split(data_to_split, split_indices):
     """split data along axis=0 (rows) at indices designated in split_indices"""
     return tuple(
         data_to_split[start:end]
         for (start, end) in split_indices
     )
-
-
-print('train/dev/test splitting')
-
-end_dev = size_train + size_dev
-print('end_dev ={}'.format(end_dev))
-# assign the indices for separating the original (pre-sampled) data into
-# train/dev/test
-splits = [(0, size_train), (size_train, end_dev), (end_dev, balanced_df.shape[0])]
-print('splits ={}'.format(splits))
-
 
 def process_split(
         split_name,
@@ -346,32 +252,6 @@ def process_split(
         os.path.join(DATADIR, '{}_arrays.npz'.format(split_name)),
         **split_data
     )
-
-
-# convert columns to an array. Each row represents a content item,
-# each column an individual taxon
-binary_multilabel = balanced_df[list(balanced_df.columns)].values
-print('Example row of multilabel array {}'.format(binary_multilabel[2]))
-
-data = {
-    "x": combined_text_sequences_padded,
-    "meta": meta,
-    "title": title_onehot,
-    "desc": description_onehot,
-    "y": sparse.csr_matrix(binary_multilabel),
-    "content_id": balanced_df.index.get_level_values('content_id'),
-}
-
-for split, name in zip(splits, ('train', 'dev', 'test')):
-    print("Generating {} split".format(name))
-    process_split(
-        name,
-        split,
-        data
-    )
-
-print("Finished")
-
 
 def load_labelled_level2():
     labelled_level2 = pd.read_csv(
@@ -404,3 +284,97 @@ def load_labelled_level2():
 
 if __name__ == "__main__":
     labelled_level2 = load_labelled_level2()
+
+    binary_multilabel = create_binary_multilabel(labelled_level2)
+
+    # ***** RESAMPLING OF MINORITY TAXONS **************
+    # ****************************************************
+    # - Training data = 80%
+    # - Development data = 10%
+    # - Test data = 10%
+
+    size_before_resample = binary_multilabel.shape[0]
+
+    size_train = int(0.8 * size_before_resample)  # train split
+    print('Size of train set:', size_train)
+
+    size_dev = int(0.1 * size_before_resample)  # test split
+    print('Size of dev/test sets:', size_dev)
+
+    balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel)
+    size_train += upsample_size
+    print("New size of training set: {}".format(size_train))
+
+    meta = create_meta(balanced_df.index.get_level_values('content_id'))
+
+
+    # **** TOKENIZE TEXT ********************
+    # ************************************
+
+    # Load tokenizers, fitted on both labelled and unlabelled data from file
+    # created in clean_content.py
+
+    combined_text_sequences_padded = create_padded_combined_text_sequences(
+        balanced_df.index.get_level_values('combined_text')
+    )
+
+    # prepare title and description matrices,
+    # which are one-hot encoded for the 10,000 most common words
+    # to be fed in after the flatten layer (through fully connected layers)
+
+    print('one-hot encoding title sequences')
+
+    title_onehot = create_one_hot_matrix_for_column(
+        tokenizing.load_tokenizer_from_file(
+            os.path.join(DATADIR, "title_tokenizer.json")
+        ),
+        balanced_df.index.get_level_values('title'),
+        num_words=10000,
+    )
+
+    print('title_onehot shape {}'.format(title_onehot.shape))
+
+    print('one-hot encoding description sequences')
+
+    description_onehot = create_one_hot_matrix_for_column(
+        tokenizing.load_tokenizer_from_file(
+            os.path.join(DATADIR, "description_tokenizer.json")
+        ),
+        balanced_df.index.get_level_values('description'),
+        num_words=10000,
+    )
+
+    print('description_onehot shape {}'.format(description_onehot.shape))
+
+    print('train/dev/test splitting')
+
+    end_dev = size_train + size_dev
+    print('end_dev ={}'.format(end_dev))
+    # assign the indices for separating the original (pre-sampled) data into
+    # train/dev/test
+    splits = [(0, size_train), (size_train, end_dev), (end_dev, balanced_df.shape[0])]
+    print('splits ={}'.format(splits))
+
+    # convert columns to an array. Each row represents a content item,
+    # each column an individual taxon
+    binary_multilabel = balanced_df[list(balanced_df.columns)].values
+    print('Example row of multilabel array {}'.format(binary_multilabel[2]))
+
+    data = {
+        "x": combined_text_sequences_padded,
+        "meta": meta,
+        "title": title_onehot,
+        "desc": description_onehot,
+        "y": sparse.csr_matrix(binary_multilabel),
+        "content_id": balanced_df.index.get_level_values('content_id'),
+    }
+
+    for split, name in zip(splits, ('train', 'dev', 'test')):
+        print("Generating {} split".format(name))
+        process_split(
+            name,
+            split,
+            data
+        )
+
+    print("Finished")
