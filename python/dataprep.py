@@ -18,25 +18,6 @@ warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
 DATADIR = os.getenv('DATADIR')
 
-labelled_level2 = pd.read_csv(
-    os.path.join(DATADIR, 'labelled_level2.csv.gz'),
-    dtype=object,
-    compression='gzip'
-)
-
-# Create World taxon in case any items not identified 
-# through doc type in clean_content are still present
-labelled_level2.loc[labelled_level2['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
-
-# **** TAXONS TO CATEGORICAL -> DICT **********
-# *********************************************
-
-# creating categorical variable for level2taxons from values
-labelled_level2['level2taxon'] = labelled_level2['level2taxon'].astype('category')
-
-# Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
-labelled_level2['level2taxon_code'] = labelled_level2.level2taxon.astype('category').cat.codes + 1
-
 # create dictionary of taxon category code to string label for use in model evaluation
 labels_index = dict(zip((labelled_level2['level2taxon_code']),
                         labelled_level2['level2taxon']))
@@ -405,3 +386,29 @@ for split, name in zip(splits, ('train', 'dev', 'test')):
     )
 
 print("Finished")
+
+
+def load_labelled_level2():
+    labelled_level2 = pd.read_csv(
+        os.path.join(DATADIR, 'labelled_level2.csv.gz'),
+        dtype=object,
+        compression='gzip'
+    )
+
+    # Create World taxon in case any items not identified
+    # through doc type in clean_content are still present
+    labelled_level2.loc[labelled_level2['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
+
+    # **** TAXONS TO CATEGORICAL -> DICT **********
+    # *********************************************
+
+    # creating categorical variable for level2taxons from values
+    labelled_level2['level2taxon'] = labelled_level2['level2taxon'].astype('category')
+
+    # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
+    labelled_level2['level2taxon_code'] = labelled_level2.level2taxon.astype('category').cat.codes + 1
+
+    return labelled_level2
+
+if __name__ == "__main__":
+    labelled_level2 = load_labelled_level2()
