@@ -18,17 +18,6 @@ warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
 DATADIR = os.getenv('DATADIR')
 
-# ***** NEW COLUMNS FREQUENCY COUNTS **********
-# *********************************************
-
-# count the number of content items per taxon into new column
-labelled_level2['num_content_per_taxon'] = labelled_level2.groupby(["level2taxon"])['level2taxon'].transform("count")
-
-print('Number of unique level2taxons: {}'.format(labelled_level2.level2taxon.nunique()))
-
-# count the number of taxons per content item into new column
-labelled_level2['num_taxon_per_content'] = labelled_level2.groupby(["content_id"])['content_id'].transform("count")
-
 
 # **** RESHAPE data long -> wide by taxon *******
 # ***********************************************
@@ -403,6 +392,13 @@ def load_labelled_level2():
 
     # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
     labelled_level2['level2taxon_code'] = labelled_level2.level2taxon.astype('category').cat.codes + 1
+
+    print('Number of unique level2taxons: {}'.format(labelled_level2.level2taxon.nunique()))
+
+    # count the number of taxons per content item into new column
+    labelled_level2['num_taxon_per_content'] = labelled_level2.groupby(
+        ["content_id"]
+    )['content_id'].transform("count")
 
     return labelled_level2
 
