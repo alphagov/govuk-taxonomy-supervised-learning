@@ -1,15 +1,14 @@
 # coding: utf-8
 
+import logging.config
 import os
 import warnings
 
 import pandas as pd
 from sklearn.exceptions import DataConversionWarning
 
-import logging.config
 import dataprep
 import tokenizing
-import time
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
