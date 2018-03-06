@@ -1,9 +1,9 @@
 # coding: utf-8
 
-import os
-import time
-import warnings
 import logging.config
+import os
+import warnings
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
