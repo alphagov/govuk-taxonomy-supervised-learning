@@ -373,6 +373,9 @@ def process_split(
         for name, df in data.items()
     }
 
+    for name, df in split_data.items():
+        print("  {}: {}".format(name, df.shape))
+
     np.savez(
         os.path.join(DATADIR, '{}_arrays.npz'.format(split_name)),
         **split_data
