@@ -18,10 +18,6 @@ warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
 DATADIR = os.getenv('DATADIR')
 
-# create dictionary of taxon category code to string label for use in model evaluation
-labels_index = dict(zip((labelled_level2['level2taxon_code']),
-                        labelled_level2['level2taxon']))
-
 # ***** NEW COLUMNS FREQUENCY COUNTS **********
 # *********************************************
 
@@ -101,7 +97,7 @@ def upsample_low_support_taxons(dataframe):
                                                ][:size_train]
 
         if training_samples_tagged_to_taxon.shape[0] < 500:
-            print("Taxon code:", taxon, "Taxon name:", labels_index[taxon])
+            print("Taxon code:", taxon)
             print("SMALL SUPPORT:", training_samples_tagged_to_taxon.shape[0])
             df_minority = training_samples_tagged_to_taxon
             if not df_minority.empty:
