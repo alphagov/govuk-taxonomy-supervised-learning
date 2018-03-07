@@ -14,7 +14,7 @@ from sklearn.exceptions import DataConversionWarning
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle, resample
-
+import yaml
 import tokenizing
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
@@ -104,16 +104,19 @@ def upsample_low_support_taxons(dataframe):
     return balanced, upsampled_training.shape[0]
 
 
-def to_cat_to_hot(meta_df, var):
+def to_cat_to_hot(meta_df, var, valuelist):
     """one hot encode each metavar"""
     encoder = LabelEncoder()
+    encoder.fit(valuelist)
     metavar_cat = var + "_cat"  # get categorical codes into new column
-    meta_df[metavar_cat] = encoder.fit_transform(meta_df[var])
-    tf.cast(meta_df[metavar_cat], tf.float32)
+    meta_df[metavar_cat] = encoder.transform(meta_df[var])
+    # tf.cast(meta_df[metavar_cat], tf.float32)
     return to_categorical(meta_df[metavar_cat])
 
 
 def create_meta(dataframe_column, orig_df):
+    with open(os.path.join(DATADIR, "metadata_lists.yaml"), "r") as f:
+        metadata_lists = yaml.load(f)
     # extract content_id index to df
     meta_df = pd.DataFrame(dataframe_column)
     meta_varlist = (
@@ -138,7 +141,7 @@ def create_meta(dataframe_column, orig_df):
     for metavar in meta_varlist:
         if metavar != "first_published_at":
             logging.info(metavar)
-            dict_of_onehot_encodings[metavar] = to_cat_to_hot(meta_df, metavar)
+            dict_of_onehot_encodings[metavar] = to_cat_to_hot(meta_df, metavar, metadata_lists[metavar])
 
     # First_published_at:
     # Convert to timestamp, then scale between 0 and 1 so same weight as binary vars
