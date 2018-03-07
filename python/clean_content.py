@@ -17,6 +17,8 @@ from pandas.io.json import json_normalize
 
 from pipeline_functions import extract_text, write_csv
 from tokenizing import create_and_save_tokenizer
+import yaml
+
 
 # Setup pipeline logging
 
@@ -278,6 +280,17 @@ create_and_save_tokenizer(
     outfilename=os.path.join(DATADIR, "description_tokenizer.json")
 )
 
+# SAVE OUT METADATA LISTS FOR USE IN dataprep before splitting into labelled/unlabelled
+logger.info('saving metadata lists')
+
+with open(os.path.join(DATADIR,"metadata_lists.yaml"), "w") as f:
+    yaml.dump({
+        'document_type': sorted(content['document_type'].unique()),
+        'primary_publishing_organisation': sorted(
+            filter(lambda x: isinstance(x, str), content['primary_publishing_organisation'].unique())
+        ),
+        'publishing_app': sorted(content['publishing_app'].unique())
+    }, f)
 
 # Identify and select untagged content items
 
