@@ -1,12 +1,16 @@
-import data
 from data_extraction import content_export
 from data_extraction import taxonomy_query
 from lib import plek
 from lib.helpers import dig
+from multiprocessing import Pool
+from git import Repo
+
+
+import datetime
+import data
 import yaml
 import functools
 import progressbar
-from multiprocessing import Pool
 import gzip
 import json
 import os
@@ -105,7 +109,9 @@ def __stream_json(output_file, iterator):
         def __iter__(self):
             return self.iterator
 
-    obj = { "items": StreamContent(iterator) }
+    obj = {"_meta": {"date": str(datetime.datetime.today()),
+                     "code": Repo(search_parent_directories=True).head.commit.hexsha},
+           "items": StreamContent(iterator)}
     
     json.dump(
         obj,
