@@ -4,7 +4,7 @@ Automatically tag content tags to taxons using machine learning algorithms.
 
 ## Requirements
 
-* Python 3.4.6
+* Python 3.4.6 (try using [pyenv](https://github.com/pyenv/pyenv#installation))
 * See [requirements.txt](requirements.txt) for python dependencies.
 * The amazon web services (AWS) command line interface (CLI), see below.
 
