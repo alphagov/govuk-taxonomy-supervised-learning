@@ -156,5 +156,3 @@ def __get_all_content():
 
     pool = Pool(10)
     return pool.imap(get_content, content_links_set), len(content_links_set)
-
-

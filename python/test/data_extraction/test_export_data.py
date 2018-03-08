@@ -1,6 +1,8 @@
+from freezegun import freeze_time
 from data_extraction import export_data
 from test.data_extraction.content_store_helpers import *
 from test.lib.mock_io import MockIO
+from git import Repo
 
 
 import responses
@@ -65,3 +67,15 @@ class TestExportData(unittest.TestCase):
             export_data.export_untagged_content()
             expected = [{"title":"title1"}]
             self.assertListEqual(expected, json.loads(output.buffer)["items"])
+
+    @freeze_time("2018-03-07")
+    def test_export_metadata(self):
+        output = MockIO()
+        input_string = json.dumps([content_with_taxons, content_without_taxons])
+
+        with unittest.mock.patch('gzip.open',
+                                 side_effect=self.return_input_or_output(io.StringIO(input_string), output)):
+            export_data.export_untagged_content()
+            expected = {"date": "2018-03-07 00:00:00",
+                        "code": Repo(search_parent_directories=True).head.commit.hexsha}
+            self.assertEqual(expected, json.loads(output.buffer)["_meta"])
