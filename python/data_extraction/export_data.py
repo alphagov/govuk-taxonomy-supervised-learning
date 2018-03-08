@@ -19,64 +19,6 @@ with open(config_path) as json_data_file:
     configuration = json.load(json_data_file)
 
 
-def __stream_json(output_file, iterator):
-    # The json package in the stdlib doesn't support dumping a
-    # generator, but it can handle lists, so this class acts as a
-    # go between, making the generator look like a list.
-    class StreamContent(list):
-        def __bool__(self):
-            # The json class tests the truthyness of this object,
-            # so this needs to be overridden to True
-            return True
-
-        def __iter__(self):
-            return iterator
-
-    json.dump(
-        StreamContent(),
-        output_file,
-        indent=4,
-        check_circular=False,
-        sort_keys=True,
-    )
-
-
-def __transform_content(input_filename="data/content.json.gz",
-                        output_filename="data/filtered_content.json.gz",
-                        transform_function=lambda x: x):
-    with gzip.open(input_filename, mode='rt') as input_file:
-        with gzip.open(output_filename, mode='wt') as output_file:
-            content_generator = ijson.items(input_file, prefix='item')
-            __stream_json(output_file, transform_function(content_generator))
-
-
-def __get_all_content():
-    get_content = functools.partial(
-        content_export.get_content,
-        content_store_url=plek.find('draft-content-store')
-    )
-
-    blacklisted_document_types = data.document_types_excluded_from_the_topic_taxonomy()
-    progress_bar = progressbar.ProgressBar()
-
-    content_links_list = list(
-        progress_bar(
-            content_export.content_links_generator(
-                blacklist_document_types=blacklisted_document_types
-            )
-        )
-    )
-
-    content_links_set = set(content_links_list)
-    duplicate_links = len(content_links_list) - len(content_links_set)
-
-    if duplicate_links > 0:
-        print("{} duplicate links from Rummager".format(duplicate_links))
-
-    pool = Pool(10)
-    return pool.imap(get_content, content_links_set), len(content_links_set)
-
-
 def export_content(output_filename="data/content.json.gz"):
     seen_content_ids = set()
     duplicate_content_ids = []
@@ -145,3 +87,68 @@ def export_taxons(output_filename="data/taxons.json.gz"):
 
     with gzip.open(output_filename, 'wt') as output_file:
         __stream_json(output_file, __taxonomy())
+
+
+def __stream_json(output_file, iterator):
+    # The json package in the stdlib doesn't support dumping a
+    # generator, but it can handle lists, so this class acts as a
+    # go between, making the generator look like a list.
+    class StreamContent(list):
+        def __init__(self, iterator):
+            self.iterator = iterator
+
+        def __bool__(self):
+            # The json class tests the truthyness of this object,
+            # so this needs to be overridden to True
+            return True
+
+        def __iter__(self):
+            return self.iterator
+
+    obj = { "items": StreamContent(iterator) }
+    
+    json.dump(
+        obj,
+        output_file,
+        indent=4,
+        check_circular=False,
+        sort_keys=True,
+    )
+
+
+def __transform_content(input_filename="data/content.json.gz",
+                        output_filename="data/filtered_content.json.gz",
+                        transform_function=lambda x: x):
+    with gzip.open(input_filename, mode='rt') as input_file:
+        with gzip.open(output_filename, mode='wt') as output_file:
+            content_generator = ijson.items(input_file, prefix='item')
+            __stream_json(output_file, transform_function(content_generator))
+
+
+def __get_all_content():
+    get_content = functools.partial(
+        content_export.get_content,
+        content_store_url=plek.find('draft-content-store')
+    )
+
+    blacklisted_document_types = data.document_types_excluded_from_the_topic_taxonomy()
+    progress_bar = progressbar.ProgressBar()
+
+    content_links_list = list(
+        progress_bar(
+            content_export.content_links_generator(
+                blacklist_document_types=blacklisted_document_types
+            )
+        )
+    )
+
+    content_links_set = set(content_links_list)
+    duplicate_links = len(content_links_list) - len(content_links_set)
+
+    if duplicate_links > 0:
+        print("{} duplicate links from Rummager".format(duplicate_links))
+
+    pool = Pool(10)
+    return pool.imap(get_content, content_links_set), len(content_links_set)
+
+

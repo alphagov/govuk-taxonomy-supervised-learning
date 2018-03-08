@@ -20,7 +20,7 @@ class TestExportData(unittest.TestCase):
                         {"parent_content_id": "rrrr", "base_path": "/root_taxon/taxon_a", "content_id": "aaaa"},
                         {"parent_content_id": "aaaa", "base_path": "/root_taxon/taxon_1", "content_id": "aaaa_1111"},
                         {"parent_content_id": "aaaa", "base_path": "/root_taxon/taxon_2", "content_id": "aaaa_2222"}]
-            self.assertEqual(expected, json.loads(output.buffer))
+            self.assertEqual(expected, json.loads(output.buffer)["items"])
 
     def return_input_or_output(self, input_io, output_io):
         return lambda *_, **ka: input_io if ka['mode'] == 'rt' else output_io
@@ -38,7 +38,7 @@ class TestExportData(unittest.TestCase):
         with unittest.mock.patch('gzip.open', return_value=output):
             export_data.export_content()
             expected = [content_first, content_second]
-            self.assertCountEqual(expected, json.loads(output.buffer))
+            self.assertCountEqual(expected, json.loads(output.buffer)["items"])
 
     def test_export_filtered_content(self):
         input_string = json.dumps([content_with_taxons, content_without_taxons])
@@ -51,7 +51,7 @@ class TestExportData(unittest.TestCase):
                          "content_id": content_with_taxons["content_id"]},
                         {"base_path": content_without_taxons['base_path'],
                          "content_id": content_without_taxons["content_id"]}]
-            self.assertEqual(expected, json.loads(output.buffer))
+            self.assertEqual(expected, json.loads(output.buffer)["items"])
 
     def export_untagged_content(self):
         output = MockIO()
@@ -60,4 +60,4 @@ class TestExportData(unittest.TestCase):
         with unittest.mock.patch('gzip.open',
                                  side_effect=self.return_input_or_output(io.StringIO(input_string), output)):
             export_data.export_filtered_content()
-            self.assertListEqual([content_without_taxons], json.loads(output.buffer))
+            self.assertListEqual([content_without_taxons], json.loads(output.buffer)["items"])
