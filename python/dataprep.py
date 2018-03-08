@@ -108,10 +108,13 @@ def to_cat_to_hot(meta_df, var, valuelist):
     """one hot encode each metavar"""
     encoder = LabelEncoder()
     encoder.fit(valuelist)
+    logging.info("classes_ {}".format(len(encoder.classes_)))
     metavar_cat = var + "_cat"  # get categorical codes into new column
     meta_df[metavar_cat] = encoder.transform(meta_df[var])
+    logging.info("meta_df[metavar_cat].shape {}".format(meta_df[metavar_cat].shape))
+    logging.info("max(meta_df[metavar_cat]) {}".format(max(meta_df[metavar_cat])))
     # tf.cast(meta_df[metavar_cat], tf.float32)
-    return to_categorical(meta_df[metavar_cat])
+    return to_categorical(meta_df[metavar_cat], num_classes=len(valuelist))
 
 
 def create_meta(dataframe_column, orig_df):
@@ -141,7 +144,18 @@ def create_meta(dataframe_column, orig_df):
     for metavar in meta_varlist:
         if metavar != "first_published_at":
             logging.info(metavar)
-            dict_of_onehot_encodings[metavar] = to_cat_to_hot(meta_df, metavar, metadata_lists[metavar])
+            valuelist = metadata_lists[metavar]
+
+            if metavar == "primary_publishing_organisation":
+                valuelist += ['']
+
+            metavar_encoding  = to_cat_to_hot(meta_df, metavar, valuelist)
+            logging.info("Shape of {}: {}".format(metavar, metavar_encoding.shape))
+
+            if metavar_encoding.shape[1] != len(valuelist):
+                raise Exception("metavar_encoding shape is wrong!")
+
+            dict_of_onehot_encodings[metavar] = metavar_encoding
 
     # First_published_at:
     # Convert to timestamp, then scale between 0 and 1 so same weight as binary vars
