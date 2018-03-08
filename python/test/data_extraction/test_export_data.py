@@ -1,11 +1,13 @@
-import unittest
-import unittest.mock
 from data_extraction import export_data
 from test.data_extraction.content_store_helpers import *
+from test.lib.mock_io import MockIO
+
+
 import responses
+import unittest
+import unittest.mock
 import json
 import io
-from test.lib.mock_io import MockIO
 
 class TestExportData(unittest.TestCase):
     @responses.activate
@@ -50,14 +52,16 @@ class TestExportData(unittest.TestCase):
                          "base_path": content_with_taxons['base_path'],
                          "content_id": content_with_taxons["content_id"]},
                         {"base_path": content_without_taxons['base_path'],
-                         "content_id": content_without_taxons["content_id"]}]
+                         "content_id": content_without_taxons["content_id"],
+                         "title":"title1"}]
             self.assertEqual(expected, json.loads(output.buffer)["items"])
 
-    def export_untagged_content(self):
+    def test_export_untagged_content(self):
         output = MockIO()
         input_string = json.dumps([content_with_taxons, content_without_taxons])
 
         with unittest.mock.patch('gzip.open',
                                  side_effect=self.return_input_or_output(io.StringIO(input_string), output)):
-            export_data.export_filtered_content()
-            self.assertListEqual([content_without_taxons], json.loads(output.buffer)["items"])
+            export_data.export_untagged_content()
+            expected = [{"title":"title1"}]
+            self.assertListEqual(expected, json.loads(output.buffer)["items"])
