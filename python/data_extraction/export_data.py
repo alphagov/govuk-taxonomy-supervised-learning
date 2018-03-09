@@ -109,8 +109,10 @@ def __stream_json(output_file, iterator):
         def __iter__(self):
             return self.iterator
 
-    obj = {"_meta": {"date": str(datetime.datetime.today()),
-                     "code": Repo(search_parent_directories=True).head.commit.hexsha},
+    obj = {"_meta": {
+               "date": str(datetime.datetime.today()),
+               "code": Repo(search_parent_directories=True).head.commit.hexsha
+           },
            "items": StreamContent(iterator)}
     
     json.dump(
