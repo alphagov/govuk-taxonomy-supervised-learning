@@ -22,6 +22,12 @@ parser.add_argument(
     help='Name of csv.gz input containing untagged content items, usually new_content.csv.gz or labelled_level1.csv.gz'
 )
 
+parser.add_argument(
+    '--outarrays_filename', dest='outarrays_filename', metavar='FILENAME', default=None,
+    help='Name of processed data saved out as arrays'
+)
+
+
 if __name__ == "__main__":
     args = parser.parse_args()
     
@@ -99,6 +105,7 @@ if __name__ == "__main__":
         "content_id": new_content['content_id']
     }
 
-    dataprep.process_split('predict', (0, new_content.shape[0]), data)
+    dataprep.process_split(args.outarrays_filename, (0, new_content.shape[0]), data)
+
 
     logger.info("Finished")
