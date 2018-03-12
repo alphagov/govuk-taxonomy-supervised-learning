@@ -33,7 +33,7 @@ if __name__ == "__main__":
                       'content_purpose_supergroup', 'email_document_supertype',
                       'government_document_supertype', 'navigation_document_supertype',
                       'public_updated_at', 'search_user_need_document_supertype',
-                      'taxon_id', 'taxons', 'user_journey_document_supertype', 'updated_at'], axis=1, inplace=True)
+                      'taxon_id', 'user_journey_document_supertype', 'updated_at'], axis=1, inplace=True)
 
     # **** VECTORIZE META ********************
     # ************************************
