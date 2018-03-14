@@ -1,15 +1,13 @@
 import ijson
-import json
 import gzip
-import os
 import progressbar
 import csv
+import sys
 
 from io import StringIO
 from itertools import chain, groupby, islice
 from data import document_types_excluded_from_the_topic_taxonomy
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), '../../data/content.json.gz')
 EXCLUDED_DOCS = document_types_excluded_from_the_topic_taxonomy()
 LEGACY_TAGS = ['policy_areas', 'topics', 'policies', 'mainstream_browse_pages']
 
@@ -98,7 +96,7 @@ def _convert_to_csv(hashes):
 def _mapping_quality(mapping):
 	return mapping["mapping_count"] * mapping["mapping_share"]
 
-file = gzip.open(DATA_PATH)
+file = gzip.open(sys.argv[1])
 gen = ijson.items(file, prefix='item')
 # gen = islice(gen, 10)
 
