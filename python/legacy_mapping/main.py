@@ -16,16 +16,17 @@ def legacy_taxon_to_topic_taxons(items):
 	progress_bar = progressbar.ProgressBar()
 
 	for item in progress_bar(items):
-		if item["document_type"] in EXCLUDED_DOCS:
+		if item['document_type'] in EXCLUDED_DOCS:
 			continue
 
-		for legacy_taxon in extract_legacy_taxons(item):
+		for legacy_taxon in _extract_legacy_taxons(item):
 			if len(legacy_taxon) == 0: continue
 
 			if not legacy_taxon in mapping: 
 				mapping[legacy_taxon] = []
 
-			topic_taxon_set = _filter_imported(extract_topic_taxons(item))
+			topic_taxon_set = _extract_topic_taxons(item)
+			topic_taxon_set = _filter_topic_taxons(topic_taxon_set)
 			if len(topic_taxon_set) == 0: continue
 			
 			mapping[legacy_taxon].append(topic_taxon_set)
@@ -40,21 +41,25 @@ def convert_to_scored_hashes(mapping):
 		topic_taxons.sort()
 
 		if len(topic_taxons) == 0:
-			scores.append({"legacy_taxon": legacy_taxon,
-				           "topic_taxon": "null",
-				           "mapping_count": 0,
-				           "mapping_share": 0})
+			scores.append({'legacy_taxon_path': legacy_taxon,
+				           'topic_taxon_path': 'null',
+				           'topic_taxon_level': 0,
+				           'mapping_count': 0,
+				           'mapping_share': 0})
 
 		for topic_taxon, dups in groupby(topic_taxons):
-			dups_len = len(list(dups))
-			scores.append({"legacy_taxon": legacy_taxon,
-				 		   "topic_taxon": topic_taxon,
-				 		   "mapping_count": dups_len,
-				 		   "mapping_share": dups_len / len(topic_taxon_sets)})
+			mapping_count = len(list(dups))
+			mapping_share = mapping_count / len(topic_taxon_sets)
+
+			scores.append({'legacy_taxon_path': legacy_taxon,
+				 		   'topic_taxon_path': topic_taxon[1],
+				 		   'topic_taxon_level': topic_taxon[0] + 1,
+				 		   'mapping_count': mapping_count,
+				 		   'mapping_share': mapping_share})
 
 	return scores
 
-def extract_legacy_taxons(item):
+def _extract_legacy_taxons(item):
 	tags = []
 	links = item['links']
 
@@ -65,23 +70,26 @@ def extract_legacy_taxons(item):
 
 	return tags
 
-def extract_topic_taxons(item):
+def _extract_topic_taxons(item):
 	links = item['links']
-	base_paths = []
 
 	if 'taxons' in item['links']:
-		base_paths.extend(map(lambda link: link['base_path'], links['taxons']))
-		return list(set(_flatmap(_explode_base_path, base_paths)))
+		traces = map(_trace_topic_taxon, links['taxons'])
+		return list(set(_flatmap(lambda x: x, traces)))
 
 	return []
 
-def _explode_base_path(base_path):
-	parts = base_path.split("/")
-	exploded_paths = ["/".join(parts[0:end]) for end in range(1, len(parts)+1)]
-	return exploded_paths[1:]
+def _trace_topic_taxon(link):
+	taxons = [link]
 
-def _filter_imported(base_paths):
-	return [path for path in base_paths if not path.startswith("/imported")]
+	while 'parent_taxons' in link['links']:
+		taxons.append(link['links']['parent_taxons'][0])
+		link = link['links']['parent_taxons'][0]
+
+	return enumerate(map(lambda taxon: taxon['base_path'], taxons[::-1]))
+
+def _filter_topic_taxons(taxons):
+	return [taxon for taxon in taxons if not taxon[1].startswith('/imported')]
 
 def _flatmap(f, items):
 	return list(chain.from_iterable(map(f, items)))
@@ -93,12 +101,12 @@ def _convert_to_csv(hashes):
 	[writer.writerow(hash) for hash in hashes]
 	return output.getvalue()
 
-def _mapping_quality(mapping):
-	return mapping["mapping_count"] * mapping["mapping_share"]
+def _mapping_quality(item):
+	return item['mapping_count'] * item['mapping_share'] * item['topic_taxon_level']
 
 file = gzip.open(sys.argv[1])
 gen = ijson.items(file, prefix='item')
-# gen = islice(gen, 10)
+gen = islice(gen, 10)
 
 mapping = legacy_taxon_to_topic_taxons(gen)
 scores = convert_to_scored_hashes(mapping)
