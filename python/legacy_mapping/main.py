@@ -80,7 +80,7 @@ def extract_topic_taxons(item):
 def _explode_base_path(base_path):
 	parts = base_path.split("/")
 	exploded_paths = ["/".join(parts[0:end]) for end in range(1, len(parts)+1)]
-	return exploded_paths[1:-1]
+	return exploded_paths[1:]
 
 def _filter_imported(base_paths):
 	return [path for path in base_paths if not path.startswith("/imported")]
@@ -95,10 +95,15 @@ def _convert_to_csv(hashes):
 	[writer.writerow(hash) for hash in hashes]
 	return output.getvalue()
 
+def _mapping_quality(mapping):
+	return mapping["mapping_count"] * mapping["mapping_share"]
+
 file = gzip.open(DATA_PATH)
 gen = ijson.items(file, prefix='item')
-gen = islice(gen, 10000)
+gen = islice(gen, 10)
 
 mapping = legacy_taxon_to_topic_taxons(gen)
+print(json.dumps(mapping, indent=4))
 scores = convert_to_scored_hashes(mapping)
-print(_convert_to_csv(scores))
+scores.sort(key = _mapping_quality)
+# print(_convert_to_csv(scores))
