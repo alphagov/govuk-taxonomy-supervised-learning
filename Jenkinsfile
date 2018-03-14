@@ -30,6 +30,11 @@ node {
     sh 'make check'
   }
 
+  stage('Delete virtualenv') {
+    // As it takes up lots of space
+    sh("rm -rf ./venv")
+  }
+
   if (env.BRANCH_NAME == 'master') {
     stage("Push release tag") {
       govuk.pushTag(repoName, env.BRANCH_NAME, 'release_' + env.BUILD_NUMBER)
