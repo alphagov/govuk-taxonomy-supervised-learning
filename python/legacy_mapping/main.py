@@ -3,42 +3,60 @@ import json
 import gzip
 import os
 import progressbar
+import csv
 
+from io import StringIO
 from itertools import chain, groupby, islice
 from data import document_types_excluded_from_the_topic_taxonomy
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), '../../data/content.json.gz')
 EXCLUDED_DOCS = document_types_excluded_from_the_topic_taxonomy()
-LEGACY_TAGS = ['policy_areas', 'topics', 'policies']
-progress_bar = progressbar.ProgressBar()
+LEGACY_TAGS = ['policy_areas', 'topics', 'policies', 'mainstream_browse_pages']
 
-def tag_to_path_sets_dict(items):
+def legacy_taxon_to_topic_taxons(items):
 	mapping = {}
+	progress_bar = progressbar.ProgressBar()
 
 	for item in progress_bar(items):
 		if item["document_type"] in EXCLUDED_DOCS:
 			continue
 
-		for key in legacy_base_paths(item):
-			path_set = _filter_imported(taxon_paths(item))
-			if len(path_set) == 0 or len(key) == 0: continue
-			if not key in mapping: mapping[key] = []
-			mapping[key].append(path_set)
+		for legacy_taxon in extract_legacy_taxons(item):
+			if len(legacy_taxon) == 0: continue
+
+			if not legacy_taxon in mapping: 
+				mapping[legacy_taxon] = []
+
+			topic_taxon_set = _filter_imported(extract_topic_taxons(item))
+			if len(topic_taxon_set) == 0: continue
+			
+			mapping[legacy_taxon].append(topic_taxon_set)
 
 	return mapping
 
-def score_common_paths(path_sets):
-	scores = {}
-	all_paths = _flatmap(lambda x: x, path_sets)
-	all_paths.sort()
+def convert_to_scored_hashes(mapping):
+	scores = []
 
-	for path, dups in groupby(all_paths):
-		dups_len = len(list(dups))
-		scores[path] = [dups_len, dups_len / len(path_sets)]
+	for legacy_taxon, topic_taxon_sets in mapping.items():
+		topic_taxons = _flatmap(lambda x: x, topic_taxon_sets)
+		topic_taxons.sort()
+
+		if len(topic_taxons) == 0:
+			scores.append({"legacy_taxon": legacy_taxon,
+				           "topic_taxon": "null",
+				           "mapping_count": 0,
+				           "mapping_share": 0})
+
+		for topic_taxon, dups in groupby(topic_taxons):
+			dups_len = len(list(dups))
+			scores.append({"legacy_taxon": legacy_taxon,
+				 		   "topic_taxon": topic_taxon,
+				 		   "mapping_count": dups_len,
+				 		   "mapping_share": dups_len / len(topic_taxon_sets)})
 
 	return scores
 
-def legacy_base_paths(item):
+def extract_legacy_taxons(item):
 	tags = []
 	links = item['links']
 
@@ -49,7 +67,7 @@ def legacy_base_paths(item):
 
 	return tags
 
-def taxon_paths(item):
+def extract_topic_taxons(item):
 	links = item['links']
 	base_paths = []
 
@@ -70,13 +88,17 @@ def _filter_imported(base_paths):
 def _flatmap(f, items):
 	return list(chain.from_iterable(map(f, items)))
 
+def _convert_to_csv(hashes):
+	output = StringIO()
+	writer = csv.DictWriter(output, fieldnames = hashes[0].keys())
+	writer.writeheader()
+	[writer.writerow(hash) for hash in hashes]
+	return output.getvalue()
+
 file = gzip.open(DATA_PATH)
 gen = ijson.items(file, prefix='item')
-gen = islice(gen, 1000)
+gen = islice(gen, 10000)
 
-mapping = tag_to_path_sets_dict(gen)
-
-for tag, path_sets in mapping.items():
-	mapping[tag] = score_common_paths(path_sets)
-
-print(json.dumps(mapping, indent=4))
+mapping = legacy_taxon_to_topic_taxons(gen)
+scores = convert_to_scored_hashes(mapping)
+print(_convert_to_csv(scores))
