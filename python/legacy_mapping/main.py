@@ -100,10 +100,9 @@ def _mapping_quality(mapping):
 
 file = gzip.open(DATA_PATH)
 gen = ijson.items(file, prefix='item')
-gen = islice(gen, 10)
+# gen = islice(gen, 10)
 
 mapping = legacy_taxon_to_topic_taxons(gen)
-print(json.dumps(mapping, indent=4))
 scores = convert_to_scored_hashes(mapping)
 scores.sort(key = _mapping_quality)
-# print(_convert_to_csv(scores))
+print(_convert_to_csv(scores))
