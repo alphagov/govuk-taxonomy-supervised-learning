@@ -17,3 +17,5 @@ responses==0.8.1
 statsd==3.2.2
 progressbar2==3.35.2
 ijson==2.3
+gitpython==2.1.8
+freezegun==0.3.10
