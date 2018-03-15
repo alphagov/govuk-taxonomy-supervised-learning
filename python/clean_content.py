@@ -126,14 +126,18 @@ content['taxons'] = content['links'].map(mapper)
 logger.info("Creating 'primary_publishing_organisation' column.")
 
 
-def pub_mapper(x_links):
-    if 'primary_publishing_organisation' in x_links:
-        return x_links['primary_publishing_organisation'][0]['title']
+def pub_org_mapper(x_links,option):
+    if option in x_links:
+        return x_links[option][0]['title']
     else:
         return np.NaN
 
 
-content['primary_publishing_organisation'] = content['links'].map(pub_mapper)
+content['primary_publishing_organisation'] = content['links'].\
+            map(lambda x: pub_org_mapper(x, 'primary_publishing_organisation'))
+
+content['organisations'] = content['links'].\
+            map(lambda x: pub_org_mapper(x, 'organisations'))
 
 rm = ['analytics_identifier', 'links', 'need_ids', 'phase', 'publishing_request_id', 'redirects', 'rendering_app',
       'schema_name', 'withdrawn_notice']
