@@ -19,14 +19,14 @@ def legacy_taxon_to_topic_taxons(items):
 		if item['document_type'] in EXCLUDED_DOCS:
 			continue
 
-		for legacy_taxon in _extract_legacy_taxons(item):
+		for legacy_taxon in __extract_legacy_taxons(item):
 			if len(legacy_taxon) == 0: continue
 
 			if not legacy_taxon in mapping: 
 				mapping[legacy_taxon] = []
 
-			topic_taxon_set = _extract_topic_taxons(item)
-			topic_taxon_set = _filter_topic_taxons(topic_taxon_set)
+			topic_taxon_set = __extract_topic_taxons(item)
+			topic_taxon_set = __filter_topic_taxons(topic_taxon_set)
 			if len(topic_taxon_set) == 0: continue
 			
 			mapping[legacy_taxon].append(topic_taxon_set)
@@ -37,7 +37,7 @@ def convert_to_scored_hashes(mapping):
 	scores = []
 
 	for legacy_taxon, topic_taxon_sets in mapping.items():
-		topic_taxons = _flatmap(lambda x: x, topic_taxon_sets)
+		topic_taxons = __flatten(topic_taxon_sets)
 		topic_taxons.sort()
 
 		if len(topic_taxons) == 0:
@@ -59,7 +59,7 @@ def convert_to_scored_hashes(mapping):
 
 	return scores
 
-def _extract_legacy_taxons(item):
+def __extract_legacy_taxons(item):
 	tags = []
 	links = item['links']
 
@@ -70,16 +70,16 @@ def _extract_legacy_taxons(item):
 
 	return tags
 
-def _extract_topic_taxons(item):
+def __extract_topic_taxons(item):
 	links = item['links']
 
 	if 'taxons' in item['links']:
-		traces = map(_trace_topic_taxon, links['taxons'])
-		return list(set(_flatmap(lambda x: x, traces)))
+		traces = map(__trace_topic_taxon, links['taxons'])
+		return list(set(__flatten(traces)))
 
 	return []
 
-def _trace_topic_taxon(link):
+def __trace_topic_taxon(link):
 	taxons = [link]
 
 	while 'parent_taxons' in link['links']:
@@ -88,20 +88,20 @@ def _trace_topic_taxon(link):
 
 	return enumerate(map(lambda taxon: taxon['base_path'], taxons[::-1]))
 
-def _filter_topic_taxons(taxons):
+def __filter_topic_taxons(taxons):
 	return [taxon for taxon in taxons if not taxon[1].startswith('/imported')]
 
-def _flatmap(f, items):
-	return list(chain.from_iterable(map(f, items)))
+def __flatten(items):
+	return list(chain.from_iterable(items))
 
-def _convert_to_csv(hashes):
+def __convert_to_csv(hashes):
 	output = StringIO()
 	writer = csv.DictWriter(output, fieldnames = hashes[0].keys())
 	writer.writeheader()
 	[writer.writerow(hash) for hash in hashes]
 	return output.getvalue()
 
-def _mapping_quality(item):
+def __mapping_quality(item):
 	return item['mapping_count'] * item['mapping_share'] * item['topic_taxon_level']
 
 file = gzip.open(sys.argv[1])
@@ -110,5 +110,5 @@ gen = islice(gen, 10)
 
 mapping = legacy_taxon_to_topic_taxons(gen)
 scores = convert_to_scored_hashes(mapping)
-scores.sort(key = _mapping_quality)
-print(_convert_to_csv(scores))
+scores.sort(key = __mapping_quality)
+print(__convert_to_csv(scores))
