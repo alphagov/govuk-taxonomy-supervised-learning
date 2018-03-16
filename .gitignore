@@ -1,6 +1,5 @@
 .idea/
 .env
-.envrc
 tax_SL
 .ipynb_checkpoints
 checkpoints
@@ -11,3 +10,4 @@ __pycache__
 */.cache
 client_secret.json
 python/notebooks/ML_notebooks/Graph/
+.local.envrc
