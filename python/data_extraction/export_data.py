@@ -3,7 +3,6 @@ from data_extraction import content_export
 from data_extraction import taxonomy_query
 from lib import plek
 from lib.helpers import dig
-import yaml
 import functools
 import progressbar
 from multiprocessing import Pool
@@ -53,7 +52,7 @@ def __transform_content(input_filename="data/content.json.gz",
 def __get_all_content():
     get_content = functools.partial(
         content_export.get_content,
-        content_store_url=plek.find('draft-content-store')
+        content_store_url=plek.find('content-store')
     )
 
     blacklisted_document_types = data.document_types_excluded_from_the_topic_taxonomy()

@@ -3,7 +3,7 @@ from lib import plek
 
 
 def content_store_has_item(path, json):
-    responses.add(responses.GET, plek.find("draft-content-store") + "/content" + path,
+    responses.add(responses.GET, plek.find("content-store") + "/content" + path,
                   json=json, status=200)
 
 
