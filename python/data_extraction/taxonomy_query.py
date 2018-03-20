@@ -5,7 +5,7 @@ from lib.helpers import slice, dig
 
 class TaxonomyQuery():
     def __init__(self, key_list=("content_id", "base_path", "title"),
-                 content_store_url=plek.find("draft-content-store")):
+                 content_store_url=plek.find("content-store")):
         self.content_store_url = content_store_url
         self.key_list = key_list
 

@@ -43,7 +43,7 @@ def untagged_dict_slicer(content_dict, base_fields=[], ppo_fields=[]):
 
 
 def get_content(base_path,
-                content_store_url=plek.find('draft-content-store')):
+                content_store_url=plek.find('content-store')):
     content_dict = __get_content_dict(base_path, content_store_url)
 
     if not content_dict:
