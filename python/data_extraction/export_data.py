@@ -79,6 +79,7 @@ def export_content(output_filename="data/content.json.gz"):
     blacklist_document_types = data.document_types_excluded_from_the_topic_taxonomy()
     seen_content_ids = set()
     duplicate_content_ids = []
+    blacklisted_content = []
 
     def filter_content(content):
         # This can happen a few ways, for example, if the request to
@@ -90,6 +91,10 @@ def export_content(output_filename="data/content.json.gz"):
 
         if content_id in seen_content_ids:
             duplicate_content_ids.append(content_id)
+            return False
+
+        if content.get('document_type') in blacklist_document_types:
+            blacklisted_content.append(content)
             return False
 
         seen_content_ids.add(content_id)
@@ -107,6 +112,10 @@ def export_content(output_filename="data/content.json.gz"):
     print("Seen {} duplicate content ids".format(
         duplicate_content_ids_count
     ))
+
+    print("Blacklisted content: ")
+    for bc in blacklisted_content:
+        print("content_id: %s : document_type: %s" % (bc['content_id'], bc['document_type']))
 
 
 def export_filtered_content(input_filename="data/content.json.gz", output_filename="data/filtered_content.json.gz"):
