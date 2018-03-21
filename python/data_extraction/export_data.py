@@ -49,19 +49,18 @@ def __transform_content(input_filename="data/content.json.gz",
             __stream_json(output_file, transform_function(content_generator))
 
 
-def __get_all_content():
+def __get_all_content(blacklist_document_types=[]):
     get_content = functools.partial(
         content_export.get_content,
         content_store_url=plek.find('content-store')
     )
 
-    blacklisted_document_types = data.document_types_excluded_from_the_topic_taxonomy()
     progress_bar = progressbar.ProgressBar()
 
     content_links_list = list(
         progress_bar(
             content_export.content_links_generator(
-                blacklist_document_types=blacklisted_document_types
+                blacklist_document_types=blacklist_document_types
             )
         )
     )
@@ -77,6 +76,7 @@ def __get_all_content():
 
 
 def export_content(output_filename="data/content.json.gz"):
+    blacklist_document_types = data.document_types_excluded_from_the_topic_taxonomy()
     seen_content_ids = set()
     duplicate_content_ids = []
 
@@ -95,7 +95,7 @@ def export_content(output_filename="data/content.json.gz"):
         seen_content_ids.add(content_id)
         return True
 
-    content_iterator, count = __get_all_content()
+    content_iterator, count = __get_all_content(blacklist_document_types=blacklist_document_types)
     content = filter(filter_content, content_iterator)
 
     progress_bar = progressbar.ProgressBar(max_value=count)
