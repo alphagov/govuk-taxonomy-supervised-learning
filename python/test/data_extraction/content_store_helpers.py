@@ -99,6 +99,7 @@ content_links = {
 content_first = {
     "base_path": '/first/path',
     "content_id": str(uuid.uuid4()),
+    "document_type": "document",
     "links": {
     }
 }
@@ -106,6 +107,7 @@ content_first = {
 content_second = {
     "base_path": '/second/path',
     "content_id": str(uuid.uuid4()),
+    "document_type": "document",
     "links": {
     }
 }
