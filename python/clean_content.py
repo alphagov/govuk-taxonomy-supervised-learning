@@ -135,7 +135,7 @@ def pub_mapper(x_links):
 
 content['primary_publishing_organisation'] = content['links'].map(pub_mapper)
 
-rm = ['analytics_identifier', 'links', 'need_ids', 'phase', 'publishing_request_id', 'redirects', 'rendering_app',
+rm = ['analytics_identifier', 'links', 'need_ids', 'phase', 'publishing_request_id', 'rendering_app',
       'schema_name', 'withdrawn_notice']
 
 logger.info("Dropping %s columns.", len(rm))
