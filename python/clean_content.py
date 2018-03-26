@@ -47,6 +47,9 @@ CONTENT_OUTPUT_PATH = os.path.join(DATADIR, CONTENT_OUTPUT_FILE)
 UNTAGGED_OUTPUT_FILE = 'untagged_content.csv.gz'
 UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, UNTAGGED_OUTPUT_FILE)
 
+FULL_CONTENT_OUTPUT_FILE = 'full_content.csv.gz'
+FULL_CONTENT_OUTPUT_PATH = os.path.join(DATADIR, FULL_CONTENT_OUTPUT_FILE)
+
 # Read in raw content file
 logger.info('Importing data from %s.', CONTENT_INPUT_PATH)
 
@@ -291,6 +294,10 @@ with open(os.path.join(DATADIR,"metadata_lists.yaml"), "w") as f:
         ),
         'publishing_app': sorted(content['publishing_app'].unique())
     }, f)
+
+# Save out full content file for use in evaluation scripts
+write_csv(content, 'Full content',
+          FULL_CONTENT_OUTPUT_PATH, logger)
 
 # Identify and select untagged content items
 
