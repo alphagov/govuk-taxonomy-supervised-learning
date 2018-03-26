@@ -9,7 +9,8 @@ def content_links_generator(page_size=1000,
                             rummager_url=plek.find('rummager'),
                             blacklist_document_types=[]):
     search_dict = merge({'reject_content_store_document_type': blacklist_document_types,
-                         'fields': ['link']},
+                         'fields': ['link'],
+                         'debug': 'include_withdrawn'},
                         additional_search_fields)
     search_results = rummager.Rummager(rummager_url).search_generator(search_dict, page_size=page_size)
     return map(lambda h: h.get('link'), search_results)
