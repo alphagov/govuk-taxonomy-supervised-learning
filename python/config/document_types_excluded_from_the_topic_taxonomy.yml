@@ -30,6 +30,7 @@ document_types:
   - our_governance
   - person
   - personal_information_charter
+  - placeholder_person
   - placeholder_world_location_news_page
   - policy_area
   - publication_scheme
