@@ -13,7 +13,7 @@
 #   $< means the first prerequsite
 #   $@ means the target
 
-all : taxons content labelled
+all : taxons content labelled new
 taxons : $(DATADIR)/clean_taxons.csv.gz
 content : $(DATADIR)/clean_content.csv.gz
 labelled : $(DATADIR)/labelled.csv.gz
