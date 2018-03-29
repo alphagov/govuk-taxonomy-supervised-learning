@@ -30,7 +30,10 @@ document_types:
   - our_governance
   - person
   - personal_information_charter
+  - placeholder_ministerial_role
   - placeholder_person
+  - placeholder_policy_area
+  - placeholder_topical_event
   - placeholder_world_location_news_page
   - policy_area
   - publication_scheme
@@ -44,6 +47,7 @@ document_types:
   - service_standard_report
   - services_and_information
   - social_media_use
+  - special_route
   - staff_update
   - taxon
   - topic
