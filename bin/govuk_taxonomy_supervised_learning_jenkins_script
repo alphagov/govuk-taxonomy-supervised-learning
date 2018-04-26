@@ -4,7 +4,7 @@ rm -rf ./venv
 virtualenv --python=python3 --no-site-packages ./venv
 export VIRTUAL_ENV="$PWD/venv"
 export PATH="$PWD/venv/bin:$PATH"
-pip3 install --upgrade pip
+pip3 install pip==9.0.3
 
 make pip_install
 
