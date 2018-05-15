@@ -90,7 +90,7 @@ def __get_all_content(blacklist_document_types=[]):
     if duplicate_links > 0:
         print("{} duplicate links from Rummager".format(duplicate_links))
 
-    pool = Pool(10)
+    pool = Pool(4)
     return pool.imap(get_content, content_links_set), len(content_links_set)
 
 
