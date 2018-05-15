@@ -9,6 +9,7 @@ from multiprocessing import Pool
 import gzip
 import json
 import os
+import sys
 import ijson
 
 
@@ -17,6 +18,24 @@ config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'co
 with open(config_path) as json_data_file:
     configuration = json.load(json_data_file)
 
+def notty_progress_bar():
+    def process(data):
+        count = 0
+        for x in data:
+            yield x
+            count += 1
+            if (count % 1000) == 0:
+                print("Processed {} items".format(count))
+
+        print("Finished processing {} items".format(count))
+
+    return process
+
+def jenkins_compatible_progress_bar(*args, **kwargs):
+    if sys.stdout.isatty():
+        return progressbar.ProgressBar(*args, **kwargs)
+    else:
+        return notty_progress_bar()
 
 def __stream_json(output_file, iterator):
     # The json package in the stdlib doesn't support dumping a
@@ -55,7 +74,7 @@ def __get_all_content(blacklist_document_types=[]):
         content_store_url=plek.find('content-store')
     )
 
-    progress_bar = progressbar.ProgressBar()
+    progress_bar = jenkins_compatible_progress_bar()
 
     content_links_list = list(
         progress_bar(
@@ -103,7 +122,7 @@ def export_content(output_filename="data/content.json.gz"):
     content_iterator, count = __get_all_content(blacklist_document_types=blacklist_document_types)
     content = filter(filter_content, content_iterator)
 
-    progress_bar = progressbar.ProgressBar(max_value=count)
+    progress_bar = jenkins_compatible_progress_bar(max_value=count)
 
     with gzip.open(output_filename, 'wt') as output_file:
         __stream_json(output_file, progress_bar(content))

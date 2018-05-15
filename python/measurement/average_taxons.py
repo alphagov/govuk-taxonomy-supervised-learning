@@ -4,6 +4,7 @@ import progressbar
 from lib.helpers import dig
 from lib import services
 from statistics import mean
+from data_extraction.export_data import jenkins_compatible_progress_bar
 from data_extraction.taxonomy_query import TaxonomyQuery
 
 
@@ -15,7 +16,7 @@ def measure_average_taxons(filename):
         taxons = dig(content_item, 'links', 'taxons') or []
         return len([taxon for taxon in taxons if __query.taxon_linked_to_root(taxon)])
 
-    progress_bar = progressbar.ProgressBar()
+    progress_bar = jenkins_compatible_progress_bar()
 
     with gzip.open(filename, mode='rt') as file:
         content_items = ijson.items(file, prefix='item')
