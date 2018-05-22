@@ -27,3 +27,11 @@ def content_item_tagged_to_topic_taxonomy(content_item):
             content_item_taxons(content_item)
         )
     )
+
+def content_item_within_part_of_taxonomy(content_item, taxonomy_part_content_id):
+    return any(
+        filter(
+            lambda taxon: taxon["content_id"] == taxonomy_part_content_id,
+            content_item_taxons(content_item)
+        )
+    )
