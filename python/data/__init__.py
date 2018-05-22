@@ -35,3 +35,11 @@ def write_content_file(filename, content, datadir=None):
     with gzip.open(full_filename, 'wt') as output_file:
         stream_json(output_file, content)
 
+def items_from_taxons_file(datadir=None, filename="taxons.json.gz"):
+    if datadir is None:
+        datadir = os.getenv("DATADIR")
+
+    full_filename = os.path.join(datadir, filename)
+
+    with gzip.open(full_filename, mode='rt') as taxons_file:
+        yield from ijson.items(taxons_file, prefix='item')
