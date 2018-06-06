@@ -144,7 +144,7 @@ def generate_mapping(taxons):
     return mapping
 
 
-if __name__ == '__main__':
+def write_analysis_csv(filename='mapping_analysis.csv'):
     homepage = get_topic_taxonomy()
     all_taxons = list(homepage.descendants())
 
@@ -179,7 +179,7 @@ if __name__ == '__main__':
 
     max_taxon_depth = max(x.depth() for x in taxons)
 
-    with open('mapping.csv', 'w', newline='') as csvfile:
+    with open(filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
         for taxon in taxons:
@@ -196,3 +196,40 @@ if __name__ == '__main__':
                     for legacy_class in (PolicyArea, Policy, SpecialistTopic)
                 ]
             )
+
+def write_content_tagger_csv(filename='mapping.csv'):
+    homepage = get_topic_taxonomy()
+    all_taxons = list(homepage.descendants())
+
+    taxons_to_exclude = [
+        x for x in all_taxons
+        if x.base_path in ('/education', '/transport/all', '/childcare-parenting', '/entering-staying-uk')
+    ]
+
+    taxons = [
+        x for x in all_taxons
+        if (
+                (x not in taxons_to_exclude) and
+                all(
+                    (not x.has_ancestor(taxon_to_exclude))
+                    for taxon_to_exclude in taxons_to_exclude
+                )
+        )
+    ]
+
+    mapping = generate_mapping(taxons)
+
+    taxon_content_id_and_mappings = [
+        (taxon.content_id, [x.link for x in mapping[taxon]])
+        for taxon in taxons
+        if taxon in mapping
+    ]
+
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+        for taxon_content_id, legacy_base_paths in taxon_content_id_and_mappings:
+            writer.writerow((taxon_content_id, '|'.join(legacy_base_paths)))
+
+if __name__ == '__main__':
+    write_content_tagger_csv()
