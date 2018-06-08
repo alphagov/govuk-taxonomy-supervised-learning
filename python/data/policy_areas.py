@@ -5,9 +5,11 @@ class PolicyArea():
         self,
         title,
         link,
+        content_id=None
     ):
         self.title = title
         self.link = link
+        self.content_id = content_id
 
     def __repr__(self):
         return "<PolicyArea {}>".format(self.link)
