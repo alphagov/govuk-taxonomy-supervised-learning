@@ -126,12 +126,16 @@ def gather_data(content_items):
 
     return homepage
 
+
 def write_csv_file_for_organisations(
     output_file,
     taxon_tree,
     organisations,
 ):
     def process_taxons(taxons, level):
+        if level >= 3:
+            return
+
         for taxon in sorted(taxons, key=lambda x: x.title.lower()):
             tagged_content_count = sum(
                 taxon.content_count[
