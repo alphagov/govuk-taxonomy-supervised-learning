@@ -10,7 +10,8 @@ from lib.helpers import dig
 
 import pathlib
 
-class Taxon():
+
+class Taxon:
     def __init__(self, content_id, title):
         self.content_id = content_id
         self.title = title
@@ -73,6 +74,7 @@ def get_taxons_and_parents_from_links(content_item):
         for taxon in taxons
     ]
 
+
 def extract_related_organisations(content_item):
     organisations = set()
 
@@ -99,6 +101,7 @@ def extract_related_organisations(content_item):
         )
 
     return organisations
+
 
 def gather_data(content_items):
     homepage = Taxon(
