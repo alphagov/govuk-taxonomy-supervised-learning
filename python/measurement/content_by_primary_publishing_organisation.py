@@ -170,37 +170,67 @@ def write_csv_file_for_organisations(
 
     process_taxons([taxon_tree], level=0)
 
+
 if __name__ == "__main__":
     ORGANISATION_NAMES = [
-        "HM Revenue & Customs",
-        "Department for International Development",
-        "Ministry of Justice",
-        "Foreign & Commonwealth Office",
-        "Ministry of Defence",
-        "Home Office",
-        "Ministry of Housing, Communities & Local Government",
-        "Department for Transport",
-        "Department for Environment, Food & Rural Affairs",
-        "Department of Health and Social Care",
-        "Department for Education",
-        "Department for Work and Pensions",
-        "HM Treasury",
-        "Department for Digital, Culture, Media & Sport",
+        "Attorney General's Office",
         "Cabinet Office",
-        "Competition and Markets Authority",
         "Department for Business, Energy & Industrial Strategy",
-        "HM Land Registry",
-        "Department for International Trade",
-        "UK Export Finance",
+        "Department for Digital, Culture, Media & Sport",
+        "Department for Education",
+        "Department for Environment, Food & Rural Affairs",
         "Department for Exiting the European Union",
+        "Department for International Development",
+        "Department for International Trade",
+        "Department for Transport",
+        "Department for Work and Pensions",
+        "Department of Health and Social Care",
+        "Foreign & Commonwealth Office",
+        "HM Treasury",
+        "Home Office",
+        "Ministry of Defence",
+        "Ministry of Housing, Communities & Local Government",
+        "Ministry of Justice",
+        "Northern Ireland Office",
+        "Office of the Advocate General for Scotland",
+        "Office of the Leader of the House of Commons",
+        "Office of the Leader of the House of Lords",
+        "Office of the Secretary of State for Scotland",
+        "Office of the Secretary of State for Wales",
+        "UK Export Finance",
+
+        "The Charity Commission",
+        "Competition and Markets Authority",
+        "Crown Prosecution Service",
+        "Food Standards Agency",
+        "Forestry Commission",
+        "Government Actuary's Department",
+        "Government Legal Department",
+        "HM Land Registry",
+        "HM Revenue & Customs",
+        "NS&I",
+        "The National Archives",
+        "National Crime Agency",
+        "Office of Rail and Road",
+        "Ofgem",
+        "Ofqual",
+        "Ofsted",
+        "Serious Fraud Office",
+        "Supreme Court of the United Kingdom",
+        "UK Statistics Authority",
+        "The Water Services Regulation Authority ",
     ]
 
     organisations_by_content_id = data.organisations.get_organisations_by_content_id()
 
-    organisations = [
-        next(filter(lambda x: x.title == name, organisations_by_content_id.values()))
-        for name in ORGANISATION_NAMES
-    ]
+    def find_organisation(title):
+        for organisation in organisations_by_content_id.values():
+            if organisation.title == title:
+                return organisation
+        else:
+            raise KeyError(title)
+
+    organisations = [find_organisation(name) for name in ORGANISATION_NAMES]
 
     progress_bar = progressbar.ProgressBar(redirect_stdout=True)
     homepage = gather_data(progress_bar(data.items_from_content_file()))
