@@ -213,9 +213,10 @@ def write_csv_file_for_organisations(
     output_file,
     taxon_tree,
     organisations,
+    max_level,
 ):
     def process_taxons(taxons, level):
-        if level >= 3:
+        if level > max_level:
             return
 
         for taxon in sorted(taxons, key=lambda x: x.title.lower()):
@@ -308,6 +309,8 @@ if __name__ == "__main__":
         "The Water Services Regulation Authority ",
     ]
 
+    MAX_LEVEL = 2
+
     organisations_by_content_id = data.organisations.get_organisations_by_content_id()
 
     def find_organisation(title):
@@ -350,6 +353,7 @@ if __name__ == "__main__":
                 f,
                 homepage,
                 [organisation] + descendants,
+                MAX_LEVEL,
             )
 
         for individual_organisation in ([organisation] + descendants):
@@ -378,4 +382,5 @@ if __name__ == "__main__":
                     f,
                     homepage,
                     [individual_organisation],
+                    MAX_LEVEL,
                 )
