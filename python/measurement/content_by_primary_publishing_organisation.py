@@ -288,6 +288,7 @@ if __name__ == "__main__":
     ]
 
     MAX_LEVEL = 2
+    SEPARATE_DESCENDANTS = False
 
     organisations_by_content_id = data.organisations.get_organisations_by_content_id()
 
@@ -311,11 +312,13 @@ if __name__ == "__main__":
 
         descendants = organisation.descendants()
 
+        if SEPARATE_DESCENDANTS:
+            filename = "{}_and_descendants.csv".format(organisation.slug)
+        else:
+            filename = "{}.csv".format(organisation.slug)
+
         with open(
-            os.path.join(
-                output_prefix,
-                "{}_and_descendants.csv".format(organisation.slug),
-            ),
+            os.path.join(output_prefix, filename),
             mode="w",
             encoding="utf8",
         ) as f:
@@ -334,31 +337,32 @@ if __name__ == "__main__":
                 MAX_LEVEL,
             )
 
-        for individual_organisation in ([organisation] + descendants):
-            pathlib.Path(
-                os.path.join(
-                    output_prefix,
-                    organisation.slug,
-                )
-            ).mkdir(exist_ok=True)
-
-            with open(
-                os.path.join(
-                    output_prefix,
-                    "{}/{}.csv".format(
+        if SEPARATE_DESCENDANTS:
+            for individual_organisation in ([organisation] + descendants):
+                pathlib.Path(
+                    os.path.join(
+                        output_prefix,
                         organisation.slug,
-                        individual_organisation.slug
                     )
-                ),
-                mode="w",
-                encoding="utf8",
-            ) as f:
-                f.write("\"{}\"".format(individual_organisation.title))
-                f.write("\n\n")
+                ).mkdir(exist_ok=True)
 
-                write_csv_file_for_organisations(
-                    f,
-                    homepage,
-                    [individual_organisation],
-                    MAX_LEVEL,
-                )
+                with open(
+                    os.path.join(
+                        output_prefix,
+                        "{}/{}.csv".format(
+                            organisation.slug,
+                            individual_organisation.slug
+                        )
+                    ),
+                    mode="w",
+                    encoding="utf8",
+                ) as f:
+                    f.write("\"{}\"".format(individual_organisation.title))
+                    f.write("\n\n")
+
+                    write_csv_file_for_organisations(
+                        f,
+                        homepage,
+                        [individual_organisation],
+                        MAX_LEVEL,
+                    )
