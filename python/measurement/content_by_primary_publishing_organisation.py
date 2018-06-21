@@ -192,6 +192,9 @@ def gather_data(content_items):
     )
 
     for item in content_items:
+        if item['publishing_app'] != 'whitehall':
+            continue
+
         taxons_and_parents = get_taxons_and_parents_from_links(item)
 
         for taxons in taxons_and_parents:
