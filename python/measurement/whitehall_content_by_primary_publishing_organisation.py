@@ -192,6 +192,9 @@ def gather_data(content_items):
     )
 
     for item in content_items:
+        if item['publishing_app'] != 'whitehall':
+            continue
+
         taxons_and_parents = get_taxons_and_parents_from_links(item)
 
         for taxons in taxons_and_parents:
@@ -261,55 +264,31 @@ def write_csv_file_for_organisations(
 
 if __name__ == "__main__":
     ORGANISATION_NAMES = [
-        "Attorney General's Office",
         "Cabinet Office",
-        "Department for Business, Energy & Industrial Strategy",
-        "Department for Digital, Culture, Media & Sport",
-        "Department for Education",
         "Department for Environment, Food & Rural Affairs",
+        "HM Revenue & Customs",
+        "Ministry of Housing, Communities & Local Government",
+        "Department for Digital, Culture, Media & Sport",
+        "Office of the Secretary of State for Scotland",
+        "Department for Business, Energy & Industrial Strategy",
         "Department for Exiting the European Union",
+        "Department for Education",
         "Department for International Development",
-        "Department for International Trade",
         "Department for Transport",
-        "Department for Work and Pensions",
         "Department of Health and Social Care",
+        "Department for International Trade",
+        "Department for Work and Pensions",
         "Foreign & Commonwealth Office",
         "HM Treasury",
         "Home Office",
         "Ministry of Defence",
-        "Ministry of Housing, Communities & Local Government",
         "Ministry of Justice",
         "Northern Ireland Office",
-        "Office of the Advocate General for Scotland",
-        "Office of the Leader of the House of Commons",
-        "Office of the Leader of the House of Lords",
-        "Office of the Secretary of State for Scotland",
         "Office of the Secretary of State for Wales",
-        "UK Export Finance",
-
-        "The Charity Commission",
-        "Competition and Markets Authority",
-        "Crown Prosecution Service",
-        "Food Standards Agency",
-        "Forestry Commission",
-        "Government Actuary's Department",
-        "Government Legal Department",
-        "HM Land Registry",
-        "HM Revenue & Customs",
-        "NS&I",
-        "The National Archives",
-        "National Crime Agency",
-        "Office of Rail and Road",
-        "Ofgem",
-        "Ofqual",
-        "Ofsted",
-        "Serious Fraud Office",
-        "Supreme Court of the United Kingdom",
-        "UK Statistics Authority",
-        "The Water Services Regulation Authority ",
     ]
 
     MAX_LEVEL = 2
+    SEPARATE_DESCENDANTS = False
 
     organisations_by_content_id = data.organisations.get_organisations_by_content_id()
 
@@ -333,11 +312,13 @@ if __name__ == "__main__":
 
         descendants = organisation.descendants()
 
+        if SEPARATE_DESCENDANTS:
+            filename = "{}_and_descendants.csv".format(organisation.slug)
+        else:
+            filename = "{}.csv".format(organisation.slug)
+
         with open(
-            os.path.join(
-                output_prefix,
-                "{}_and_descendants.csv".format(organisation.slug),
-            ),
+            os.path.join(output_prefix, filename),
             mode="w",
             encoding="utf8",
         ) as f:
@@ -356,31 +337,32 @@ if __name__ == "__main__":
                 MAX_LEVEL,
             )
 
-        for individual_organisation in ([organisation] + descendants):
-            pathlib.Path(
-                os.path.join(
-                    output_prefix,
-                    organisation.slug,
-                )
-            ).mkdir(exist_ok=True)
-
-            with open(
-                os.path.join(
-                    output_prefix,
-                    "{}/{}.csv".format(
+        if SEPARATE_DESCENDANTS:
+            for individual_organisation in ([organisation] + descendants):
+                pathlib.Path(
+                    os.path.join(
+                        output_prefix,
                         organisation.slug,
-                        individual_organisation.slug
                     )
-                ),
-                mode="w",
-                encoding="utf8",
-            ) as f:
-                f.write("\"{}\"".format(individual_organisation.title))
-                f.write("\n\n")
+                ).mkdir(exist_ok=True)
 
-                write_csv_file_for_organisations(
-                    f,
-                    homepage,
-                    [individual_organisation],
-                    MAX_LEVEL,
-                )
+                with open(
+                    os.path.join(
+                        output_prefix,
+                        "{}/{}.csv".format(
+                            organisation.slug,
+                            individual_organisation.slug
+                        )
+                    ),
+                    mode="w",
+                    encoding="utf8",
+                ) as f:
+                    f.write("\"{}\"".format(individual_organisation.title))
+                    f.write("\n\n")
+
+                    write_csv_file_for_organisations(
+                        f,
+                        homepage,
+                        [individual_organisation],
+                        MAX_LEVEL,
+                    )
