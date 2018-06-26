@@ -20,6 +20,9 @@ labelled : $(DATADIR)/labelled.csv.gz
 new: $(DATADIR)/new_content.csv.gz
 export_all: data/export_filtered_content.json.gz data/export_untagged_content.json.gz data/taxons.json
 
+contextual_sidebar_metrics: data/content.json.gz
+	python3 -u -c "from measurement.contextual_sidebar_metrics import contextual_sidebar_metrics; contextual_sidebar_metrics()"
+
 measure_average_taxons: data/content.json.gz
 	cd python && python3 -u -c "from measurement.average_taxons import measure_average_taxons; measure_average_taxons(filename='../data/content.json.gz')"
 

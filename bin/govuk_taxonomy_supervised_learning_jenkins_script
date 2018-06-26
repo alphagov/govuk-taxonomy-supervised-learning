@@ -14,3 +14,4 @@ make clean
 make data/taxons.json.gz
 make data/content.json.gz
 make measure_average_taxons
+make contextual_sidebar_metrics
