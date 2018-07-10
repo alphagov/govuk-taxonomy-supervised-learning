@@ -35,3 +35,11 @@ def content_item_within_part_of_taxonomy(content_item, taxonomy_part_content_id)
             content_item_taxons(content_item)
         )
     )
+
+def content_item_directly_tagged_to_taxon(content_item, taxon_content_id):
+    return any(
+        map(
+            lambda taxon: taxon["content_id"] == taxon_content_id,
+            content_item["links"].get("taxons", [])
+        )
+    )
