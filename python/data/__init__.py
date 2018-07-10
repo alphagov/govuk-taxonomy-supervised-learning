@@ -17,7 +17,7 @@ def document_types_excluded_from_the_topic_taxonomy():
 
 def items_from_content_file(datadir=None, filename="content.json.gz"):
     if datadir is None:
-        datadir = os.getenv("DATADIR")
+        datadir = os.getenv("DATADIR") or "data"
 
     full_filename = os.path.join(datadir, filename)
 
