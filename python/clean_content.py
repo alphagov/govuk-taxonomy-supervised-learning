@@ -115,7 +115,7 @@ logger.info("Creating 'taxons' column.")
 taxonomy_query = TaxonomyQuery()
 
 
-def mapper(x_links):
+def map_content_to_taxons(x_links):
     if taxonomy_query.content_linked_to_root({'links': x_links}):
         return list(map(lambda x: x['content_id'], x_links['taxons']))
     else:
@@ -124,19 +124,19 @@ def mapper(x_links):
 
 content.dropna(subset=['links'], inplace=True)
 
-content['taxons'] = content['links'].map(mapper)
+content['taxons'] = content['links'].map(map_content_to_taxons)
 
 logger.info("Creating 'primary_publishing_organisation' column.")
 
 
-def pub_mapper(x_links):
+def map_pub_link_to_pub_title(x_links):
     if 'primary_publishing_organisation' in x_links:
         return x_links['primary_publishing_organisation'][0]['title']
     else:
         return np.NaN
 
 
-content['primary_publishing_organisation'] = content['links'].map(pub_mapper)
+content['primary_publishing_organisation'] = content['links'].map( map_pub_link_to_pub_title)
 
 rm = ['analytics_identifier', 'links', 'need_ids', 'phase', 'publishing_request_id', 'rendering_app',
       'schema_name', 'withdrawn_notice']
