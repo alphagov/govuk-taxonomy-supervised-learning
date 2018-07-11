@@ -94,3 +94,26 @@ def extract_text(body):
     if not r:
         r = ' '
     return r
+
+def map_content_to_taxons(x_links):
+    """
+    return taxons for a content item identified by content_id
+
+    :param x_links: <str> containing links
+    """
+    if taxonomy_query.content_linked_to_root({'links': x_links}):
+        return list(map(lambda x: x['content_id'], x_links['taxons']))
+    else:
+        return np.NaN
+
+def map_pub_link_to_pub_title(x_links):
+    """
+    return primary publishing org title for any primary publishing org links for a
+    content item identified by content_id
+
+    :param x_links: <str> containing links
+    """
+    if 'primary_publishing_organisation' in x_links:
+        return x_links['primary_publishing_organisation'][0]['title']
+    else:
+        return np.NaN
