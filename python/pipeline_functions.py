@@ -6,6 +6,12 @@ import functools
 import pandas as pd
 import numpy as np
 from lxml import etree
+import json
+from collections import OrderedDict
+from pandas.io.json import json_normalize
+from lxml import html
+
+
 
 def write_csv(dataframe, name, path, logger, index=False, **kwargs):
     '''
@@ -95,25 +101,84 @@ def extract_text(body):
         r = ' '
     return r
 
-def map_content_to_taxons(x_links):
-    """
-    return taxons for a content item identified by content_id
+def map_content_id_to_taxon_id(content_item):
+    return [
+        (content_item['content_id'], taxon['content_id'])
+        for taxon in content_item['links'].get('taxons', [])
+    ]
 
-    :param x_links: <str> containing links
-    """
-    if taxonomy_query.content_linked_to_root({'links': x_links}):
-        return list(map(lambda x: x['content_id'], x_links['taxons']))
+
+
+def get_primary_publishing_org(content_item):
+
+    if 'primary_publishing_organisation' in content_item['links']:
+        return content_item['links']['primary_publishing_organisation'][0]
     else:
-        return np.NaN
+        return None
 
-def map_pub_link_to_pub_title(x_links):
-    """
-    return primary publishing org title for any primary publishing org links for a
-    content item identified by content_id
+look = ['title', 'body']
+child_keys = ['title', 'description']
+filtered = ['body', 'brand', 'documents', 'final_outcome_detail', 'final_outcome_documents',
+            'government', 'headers', 'introduction', 'introductory_paragraph',
+            'licence_overview', 'licence_short_description', 'logo', 'metadata', 'more_information', 'need_to_know',
+            'other_ways_to_apply', 'summary', 'ways_to_respond', 'what_you_need_to_know', 'will_continue_on', 'parts',
+            'collection_groups']
 
-    :param x_links: <str> containing links
+def get_text(x):
     """
-    if 'primary_publishing_organisation' in x_links:
-        return x_links['primary_publishing_organisation'][0]['title']
-    else:
-        return np.NaN
+From dict to json and back (to OrderedDict), iterate over json from details column (based on list filtered, should
+reconsider) and extract plaintext from included html.
+    :param x: details cell from dataset
+    :return: plaintext
+    """
+    total_text = ""
+    string_json = json.dumps(OrderedDict(x))
+    order_json = json.loads(string_json, object_pairs_hook=OrderedDict)
+    for key, raw_text in sorted(order_json.items()):
+        if key in filtered:
+            if isinstance(raw_text, str) and len(raw_text) > 1:
+                raw_text = raw_text.replace("-", " ")
+                raw_token = raw_text.split(" ")
+                if len(raw_token) > 0:
+                    raw_string = extract_text(raw_text)
+                    total_text += " " + raw_string
+            elif isinstance(raw_text, list) and len(raw_text) > 0:
+                for sub_text in raw_text:
+                    if is_json(sub_text):
+                        total_text += nested_extract(sub_text)
+                    elif is_html(sub_text):
+                        str_from_html = extract_text(sub_text)
+                        total_text += " " + str_from_html
+    return total_text.strip()
+
+
+def nested_extract(x):
+    """
+Iterate over nested json (avoiding recursion), flattening loops.
+    :param x: nested `details` cell contents
+    :return: plaintext
+    """
+    ttext = ""
+    string_json2 = json.dumps(OrderedDict(x))
+    order_json2 = json.loads(string_json2, object_pairs_hook=OrderedDict)
+    if ('body' or 'title') in order_json2.keys():
+        for item in look:
+            raw_string2 = extract_text(order_json2[item])
+            if len(raw_string2.split()) > 1:
+                ttext += " " + raw_string2
+    elif 'child_sections' in order_json2.keys():
+        for child in order_json2['child_sections']:
+            for key in child_keys:
+                ttext += " " + child[key]
+    return ttext
+
+def is_json(raw_text):
+    try:
+        json_normalize(raw_text).columns.tolist()
+    except AttributeError:
+        return False
+    return True
+
+
+def is_html(raw_text):
+    return html.fromstring(str(raw_text)).find('.//*') is not None

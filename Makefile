@@ -38,8 +38,14 @@ data/taxons.json.gz:
 $(DATADIR)/clean_taxons.csv.gz: $(DATADIR)/taxons.json.gz
 	python3 python/clean_taxons.py $< $@
 
-$(DATADIR)/clean_content.csv.gz $(DATADIR)/untagged_content.csv.gz : python/clean_content.py $(DATADIR)/content.json.gz \
-    $(DATADIR)/document_type_group_lookup.json
+$(DATADIR)/clean_content.csv.gz \
+$(DATADIR)/combined_text_tokenizer.json \
+$(DATADIR)/title_tokenizer.json \
+$(DATADIR)/description_tokenizer.json \
+$(DATADIR)/metadata_lists.yaml \
+$(DATADIR)/content_to_taxon_map.csv \
+    : python/clean_content.py \
+     $(DATADIR)/content.json.gz
 	python3 python/clean_content.py
 
 $(DATADIR)/new_content.csv.gz : python/create_new.py $(DATADIR)/untagged_content.csv.gz \
