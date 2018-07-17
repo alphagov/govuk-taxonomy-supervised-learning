@@ -1,4 +1,5 @@
 import data
+from data.json import stream_json
 from data_extraction import content_export
 from data_extraction import taxonomy_query
 from lib import plek
@@ -37,35 +38,13 @@ def jenkins_compatible_progress_bar(*args, **kwargs):
     else:
         return notty_progress_bar()
 
-def __stream_json(output_file, iterator):
-    # The json package in the stdlib doesn't support dumping a
-    # generator, but it can handle lists, so this class acts as a
-    # go between, making the generator look like a list.
-    class StreamContent(list):
-        def __bool__(self):
-            # The json class tests the truthyness of this object,
-            # so this needs to be overridden to True
-            return True
-
-        def __iter__(self):
-            return iterator
-
-    json.dump(
-        StreamContent(),
-        output_file,
-        indent=4,
-        check_circular=False,
-        sort_keys=True,
-    )
-
-
 def __transform_content(input_filename="data/content.json.gz",
                         output_filename="data/filtered_content.json.gz",
                         transform_function=lambda x: x):
     with gzip.open(input_filename, mode='rt') as input_file:
         with gzip.open(output_filename, mode='wt') as output_file:
             content_generator = ijson.items(input_file, prefix='item')
-            __stream_json(output_file, transform_function(content_generator))
+            stream_json(output_file, transform_function(content_generator))
 
 
 def __get_all_content(blacklist_document_types=[]):
@@ -125,7 +104,7 @@ def export_content(output_filename="data/content.json.gz"):
     progress_bar = jenkins_compatible_progress_bar(max_value=count)
 
     with gzip.open(output_filename, 'wt') as output_file:
-        __stream_json(output_file, progress_bar(content))
+        stream_json(output_file, progress_bar(content))
 
     duplicate_content_ids_count = len(set(duplicate_content_ids))
     print("Seen {} duplicate content ids".format(
@@ -171,4 +150,4 @@ def export_taxons(output_filename="data/taxons.json.gz"):
         return iter(level_one_taxons + children)
 
     with gzip.open(output_filename, 'wt') as output_file:
-        __stream_json(output_file, __taxonomy())
+        stream_json(output_file, __taxonomy())
