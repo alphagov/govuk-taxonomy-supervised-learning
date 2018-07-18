@@ -322,7 +322,7 @@ if __name__ == "__main__":
 
     LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
     logging.config.fileConfig(LOGGING_CONFIG)
-    logger = logging.getLogger('create_new')
+    logger = logging.getLogger('dataprep')
 
     logger.info('Loading data')
     labelled_level2 = load_labelled_level2()
