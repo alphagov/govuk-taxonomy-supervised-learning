@@ -13,11 +13,10 @@
 #   $< means the first prerequsite
 #   $@ means the target
 
-all : taxons content labelled new
+all : taxons content labelled
 taxons : $(DATADIR)/clean_taxons.csv.gz
 content : $(DATADIR)/clean_content.csv.gz
 labelled : $(DATADIR)/labelled.csv.gz
-new: $(DATADIR)/new_content.csv.gz
 export_all: data/export_filtered_content.json.gz data/export_untagged_content.json.gz data/taxons.json
 
 measure_average_taxons: data/content.json.gz
@@ -76,7 +75,7 @@ upload: labelled
 	aws s3 cp $(DATADIR)/labelled_level1.csv.gz $(S3BUCKET)/labelled_level1.csv.gz
 	aws s3 cp $(DATADIR)/labelled_level2.csv.gz $(S3BUCKET)/labelled_level2.csv.gz
 	aws s3 cp $(DATADIR)/empty_taxons_not_world.csv.gz $(S3BUCKET)/empty_taxons_not_world.csv.gz
-	aws s3 cp $(DATADIR)/new_content.csv.gz $(S3BUCKET)/new_content.csv.gz
+
 
 
 clean :
@@ -84,7 +83,6 @@ clean :
 	    $(DATADIR)/untagged_content.csv.gz  $(DATADIR)/empty_taxons.csv.gz  \
 	    $(DATADIR)/labelled.csv.gz  $(DATADIR)/filtered.csv.gz  $(DATADIR)/old_taxons.csv.gz  \
 	    $(DATADIR)/labelled_level1.csv.gz  $(DATADIR)/labelled_level2.csv.gz  \
-	    $(DATADIR)/empty_taxons_not_world.csv.gz  $(DATADIR)/new_content.csv.gz \
 	    data/taxons.json data/content.json.gz data/export_untagged_content.json.gz data/export_filtered_content.json.gz
 
 clean_all : clean
