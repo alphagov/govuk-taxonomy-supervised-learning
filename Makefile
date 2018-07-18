@@ -13,11 +13,11 @@
 #   $< means the first prerequsite
 #   $@ means the target
 
-all : taxons content labelled
+all : taxons content labelled dataprep
 taxons : $(DATADIR)/clean_taxons.csv.gz
 content : $(DATADIR)/clean_content.csv
 labelled : $(DATADIR)/labelled.csv.gz
-new: $(DATADIR)/new_content.csv.gz
+dataprep: $(DATADIR)/train_arrays.npz $(DATADIR)/test_arrays.npz $(DATADIR)/dev_arrays.npz
 export_all: data/export_filtered_content.json.gz data/export_untagged_content.json.gz data/taxons.json
 
 measure_average_taxons: data/content.json.gz
@@ -48,7 +48,7 @@ $(DATADIR)/content_to_taxon_map.csv \
      $(DATADIR)/content.json.gz
 	python3 python/clean_content.py
 
-$(DATADIR)/%arrays.npz : python/dataprep.py $(DATADIR)/labelled_level2.csv.gz \
+$(DATADIR)/train_arrays.npz $(DATADIR)/test_arrays.npz $(DATADIR)/dev_arrays.npz: python/dataprep.py $(DATADIR)/labelled_level2.csv.gz \
     $(DATADIR)/combined_text_tokenizer.json
 	python3 python/dataprep.py
 
