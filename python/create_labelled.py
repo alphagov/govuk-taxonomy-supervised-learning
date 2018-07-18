@@ -16,8 +16,9 @@ logger = logging.getLogger('create_labelled')
 # Setup input file paths
 
 DATADIR = os.getenv('DATADIR')
-CONTENT_INPUT_PATH = os.path.join(DATADIR, 'clean_content.csv.gz')
+CONTENT_INPUT_PATH = os.path.join(DATADIR, 'clean_content.csv')
 TAXONS_INPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv.gz')
+CONTENT_TO_TAXON_MAP = os.path.join(DATADIR, 'content_to_taxon_map.csv')
 
 # Set file output paths
 
@@ -34,11 +35,17 @@ EMPTY_TAXONS_NOT_WORLD_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons_not_wor
 logger.info('Importing from %s as clean_content', CONTENT_INPUT_PATH)
 
 clean_content = pd.read_csv(
-    CONTENT_INPUT_PATH,compression='gzip'
+    CONTENT_INPUT_PATH
     )
 
 logger.info('clean_content.shape: %s.', clean_content.shape)
 logger.debug('clean_content.head(): %s.', clean_content.head())
+
+# Import content_to_taxon_map
+
+logger.info('Importing from %s as clean_content', CONTENT_TO_TAXON_MAP)
+
+content_to_taxon_map = pd.read_csv(CONTENT_TO_TAXON_MAP)
 
 # Import clean_taxons (output by clean_taxons.csv)
 
@@ -52,21 +59,21 @@ logger.info('clean_taxons.shape: %s.', clean_taxons.shape)
 logger.debug('clean_taxons.head(): %s.', clean_taxons.head())
 logger.info('clean_taxons.columns: %s.', clean_taxons.columns)
 
-# Drop extraneous columns
-
-logger.info('Dropping extraneous columns')
-
-clean_taxons = clean_taxons[['base_path','content_id','taxon_name','level1taxon','level2taxon','level3taxon','level4taxon','level5taxon']].copy()
-
-logger.info('clean_taxons.columns: %s.', clean_taxons.columns)
-logger.info('clean_taxons.shape: %s.', clean_taxons.shape)
 
 # Merge clean_content and clean_taxons to create labelled data.
 
 logger.info('Merging clean_content and clean_taxons into labelled')
 
-labelled = pd.merge(
+content_taxons = pd.merge(
     left=clean_content,
+    right=content_to_taxon_map,
+    on='content_id',
+    how='left'
+)
+
+
+labelled = pd.merge(
+    left=content_taxons,
     right=clean_taxons,
     left_on='taxon_id', # which taxon is the content item tagged to
     right_on='content_id', # what is the id of that taxon
@@ -154,7 +161,7 @@ logger.info('labelled.shape after dropping duplicates: %s', labelled.shape)
 logger.info('Unique content_ids after dropping duplicates: %s', labelled.content_id.nunique())
 
 
-labelled = labelled.drop(['content_id_y','_merge', 'variable'], axis=1)
+labelled = labelled.drop(['content_id_y','_merge'], axis=1)
 # Filter by taxon to exclude specific taxons from predictions
 
 logger.info('Filtering by taxon to produced filtered_taxons')
@@ -173,7 +180,7 @@ logger.info("filtered_taxons.shape after filtering 'Corporate information' top t
 logger.info("Merging clean_content and filtered_taxons to create filtered")
 
 filtered = pd.merge(
-    left=clean_content,
+    left=content_taxons,
     right=filtered_taxons,
     left_on='taxon_id',
     right_on='content_id',
@@ -207,7 +214,7 @@ logger.info("Tidying the filtered dataframe")
 logger.info("filtered.shape: %s", filtered.shape)
 logger.debug("filtered.columns: %s", filtered.columns)
 
-filtered = filtered.drop(['variable', 'base_path_y', 'content_id_y'], axis=1)
+filtered = filtered.drop(['base_path_y', 'content_id_y'], axis=1)
 
 filtered.rename(columns={'base_path_x': 'base_path',
                          'content_id_x': 'content_id'}, inplace=True)

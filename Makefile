@@ -36,7 +36,7 @@ data/taxons.json.gz:
 	cd python && python3 -u -c "from data_extraction.export_data import export_taxons; export_taxons(output_filename='../data/taxons.json.gz')"
 
 $(DATADIR)/clean_taxons.csv.gz: $(DATADIR)/taxons.json.gz
-	python3 python/clean_taxons.py $< $@
+	python3 python/clean_taxons.py
 
 $(DATADIR)/clean_content.csv.gz \
 $(DATADIR)/combined_text_tokenizer.json \
@@ -48,9 +48,9 @@ $(DATADIR)/content_to_taxon_map.csv \
      $(DATADIR)/content.json.gz
 	python3 python/clean_content.py
 
-$(DATADIR)/new_content.csv.gz : python/create_new.py $(DATADIR)/untagged_content.csv.gz \
-    $(DATADIR)/old_taxons.csv.gz
-	python3 python/create_new.py
+$(DATADIR)/*arrays.npz : python/dataprep.py $(DATADIR)/labelled_level2.csv.gz \
+    $(DATADIR)/combined_text_tokenizer.json $(DATADIR)/metadata_lists.yaml
+	python3 python/dataprep.py
 
 $(DATADIR)/labelled.csv.gz : python/create_labelled.py $(DATADIR)/clean_content.csv.gz \
     $(DATADIR)/clean_taxons.csv.gz
