@@ -23,7 +23,7 @@ CONTENT_TO_TAXON_MAP = os.path.join(DATADIR, 'content_to_taxon_map.csv')
 # Set file output paths
 
 LABELLED_OUTPUT_PATH = os.path.join(DATADIR, 'labelled.csv.gz')
-OLD_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'old_taxons.csv.gz')
+UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, 'untagged.csv.gz')
 EMPTY_TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'empty_taxons.csv.gz')
 LABELLED_LEVEL1_OUTPUT_PATH = os.path.join(DATADIR, 'labelled_level1.csv.gz')
 LABELLED_LEVEL2_OUTPUT_PATH = os.path.join(DATADIR, 'labelled_level2.csv.gz')
@@ -116,30 +116,16 @@ logger.info('empty_taxons.shape: %s', empty_taxons.shape)
 
 # Extract the data with no taxons (left_only) from above merge
 
-# Content tagged to old taxons, not in taxons_clean topic taxonomy
-logger.info('Extracting content tagged to old taxons not in the topic taxonomy'
-            'old_taxons, (left_only)')
-content_old_taxons = labelled[
+# Untagged content
+logger.info('Extracting untagged content: not classified in topic taxonomy')
+untagged = labelled[
     ['base_path', 'content_id', 'document_type',
      'first_published_at', 'locale', 'primary_publishing_organisation',
      'publishing_app', 'title', 'description', 'combined_text', 'taxon_id', '_merge']]
 
-content_old_taxons = content_old_taxons[content_old_taxons._merge == 'left_only']
+untagged = untagged[untagged._merge == 'left_only']
 
-content_old_taxons = content_old_taxons.drop(['_merge'], axis=1)
-
-logger.info("There are %s taxons represented in the %s content item/taxon "
-            "combinations which have no corresponding taxon in the taxon data",
-            content_old_taxons.taxon_id.nunique(), content_old_taxons.shape[0])
-
-logger.info("There are %s content items/taxon combinations with missing taxon "
-            "because these were removed during taxon_clean.py",
-            content_old_taxons[content_old_taxons.taxon_id.isnull()].shape[0])
-
-
-
-# These data are added to untagged data in create_new.py with a flag
-
+untagged = untagged.drop(['_merge'], axis=1)
 
 # Drop all data from labelled that did not join cleanly
 
@@ -208,8 +194,8 @@ write_csv(level2_tagged, 'level2 tagged labelled',
 write_csv(labelled, 'labelled',
           LABELLED_OUTPUT_PATH, logger)
 
-write_csv(content_old_taxons, 'old_taxons',
-          OLD_TAXONS_OUTPUT_PATH, logger)
+write_csv(untagged, 'untagged',
+          UNTAGGED_OUTPUT_PATH, logger)
 
 write_csv(empty_taxons, 'empty_taxons',
           EMPTY_TAXONS_OUTPUT_PATH, logger)
