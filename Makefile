@@ -89,7 +89,13 @@ clean_all : clean
 	    $(DATADIR)/raw_taxons.json $(DATADIR)/raw_content.json.gz
 
 pip_install:
-	pip3 install -r python/requirements.txt
+	if [ -d "/usr/local/cuda-8.0" ]; then \
+		echo "Using GPU requirements"; \
+		pip3 install -r python/base-requirements.txt -r python/gpu-requirements.txt ; \
+	else \
+		echo "Using CPU requirements"; \
+		pip3 install -r python/base-requirements.txt -r python/cpu-requirements.txt ; \
+	fi
 
 check:
 	cd python && python3 -m pytest
