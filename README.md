@@ -5,7 +5,7 @@ Automatically tag content tags to taxons using machine learning algorithms.
 ## Requirements
 
 * Python 3.4.6
-* See [requirements.txt](requirements.txt) for python dependencies.
+* See [base-requirements.txt](base-requirements.txt) for python dependencies.
 * The amazon web services (AWS) command line interface (CLI), see below.
 
 ## Setting environment variables
