@@ -16,10 +16,12 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle, resample
 import yaml
 import tokenizing
+import json
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
 DATADIR = os.getenv('DATADIR')
+METADATA_LIST = os.getenv('METADATA_LIST').split()
 
 
 # **** RESHAPE data long -> wide by taxon *******
@@ -122,14 +124,9 @@ def create_meta(dataframe_column, orig_df):
         metadata_lists = yaml.load(f)
     # extract content_id index to df
     meta_df = pd.DataFrame(dataframe_column)
-    meta_varlist = (
-        'document_type',
-        'first_published_at',
-        'publishing_app',
-        'primary_publishing_organisation'
-    )
 
-    for meta_var in meta_varlist:
+
+    for meta_var in METADATA_LIST:
         meta_df[meta_var] = meta_df['content_id'].map(
             dict(zip(orig_df['content_id'], orig_df[meta_var]))
         )
@@ -141,7 +138,7 @@ def create_meta(dataframe_column, orig_df):
 
     logging.info("Encoding metadata")
 
-    for metavar in meta_varlist:
+    for metavar in METADATA_LIST:
         if metavar != "first_published_at":
             logging.info(metavar)
             valuelist = metadata_lists[metavar]
@@ -149,7 +146,7 @@ def create_meta(dataframe_column, orig_df):
             if metavar == "primary_publishing_organisation":
                 valuelist += ['']
 
-            metavar_encoding  = to_cat_to_hot(meta_df, metavar, valuelist)
+            metavar_encoding = to_cat_to_hot(meta_df, metavar, valuelist)
             logging.info("Shape of {}: {}".format(metavar, metavar_encoding.shape))
 
             if metavar_encoding.shape[1] != len(valuelist):
@@ -159,68 +156,69 @@ def create_meta(dataframe_column, orig_df):
 
     # First_published_at:
     # Convert to timestamp, then scale between 0 and 1 so same weight as binary vars
-    meta_df['first_published_at'] = pd.to_datetime(meta_df['first_published_at'])
-    first_published = np.array(
-        meta_df['first_published_at']
-    ).reshape(
-        meta_df['first_published_at'].shape[0],
-        1
-    )
+    if 'first_published_at' in meta_df.columns:
+        meta_df['first_published_at'] = pd.to_datetime(meta_df['first_published_at'])
+        first_published = np.array(
+            meta_df['first_published_at']
+        ).reshape(
+            meta_df['first_published_at'].shape[0],
+            1
+        )
 
-    scaler = MinMaxScaler()
-    first_published_scaled = scaler.fit_transform(first_published)
+        scaler = MinMaxScaler()
+        first_published_scaled = scaler.fit_transform(first_published)
 
-    last_year = np.where(
-        (
-                (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-                <
-                np.timedelta64(1, 'Y')
-        ),
-        1,
-        0
-    )
+        last_year = np.where(
+            (
+                    (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+                    <
+                    np.timedelta64(1, 'Y')
+            ),
+            1,
+            0
+        )
 
-    last_2years = np.where(
-        (
-                (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-                <
-                np.timedelta64(2, 'Y')
-        ),
-        1,
-        0
-    )
+        last_2years = np.where(
+            (
+                    (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+                    <
+                    np.timedelta64(2, 'Y')
+            ),
+            1,
+            0
+        )
 
-    last_5years = np.where(
-        (
-                (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-                <
-                np.timedelta64(5, 'Y')
-        ),
-        1,
-        0
-    )
+        last_5years = np.where(
+            (
+                    (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+                    <
+                    np.timedelta64(5, 'Y')
+            ),
+            1,
+            0
+        )
 
-    olderthan5 = np.where(
-        (
-                (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
-                >
-                np.timedelta64(5, 'Y')
-        ),
-        1,
-        0
-    )
+        olderthan5 = np.where(
+            (
+                    (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
+                    >
+                    np.timedelta64(5, 'Y')
+            ),
+            1,
+            0
+        )
 
-    meta_np = np.concatenate(
-        (dict_of_onehot_encodings['document_type'],
-         dict_of_onehot_encodings['primary_publishing_organisation'],
-         dict_of_onehot_encodings['publishing_app'],
-         first_published_scaled,
-         last_year,
-         last_2years,
-         last_5years,
-         olderthan5),
-        axis=1
-    )
+    meta_arrays = []
+    if "document_type" in METADATA_LIST:
+        meta_arrays.append(dict_of_onehot_encodings['document_type'])
+    if "primary_publishing_organisation" in METADATA_LIST:
+        meta_arrays.append(dict_of_onehot_encodings['primary_publishing_organisation'])
+    if "publishing_app" in METADATA_LIST:
+        meta_arrays.append(dict_of_onehot_encodings['publishing_app'])
+    if "first_published_at" in METADATA_LIST:
+        meta_arrays.append(first_published_scaled, last_year, last_2years, last_5years, olderthan5)
+
+    meta_np = np.concatenate(meta_arrays, axis=1)
 
     return sparse.csr_matrix(meta_np)
 
@@ -322,7 +320,7 @@ if __name__ == "__main__":
 
     LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
     logging.config.fileConfig(LOGGING_CONFIG)
-    logger = logging.getLogger('create_new')
+    logger = logging.getLogger('dataprep')
 
     logger.info('Loading data')
     labelled_level2 = load_labelled_level2()

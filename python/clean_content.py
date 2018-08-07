@@ -2,22 +2,17 @@
 """
 # coding: utf-8
 
-import json
-import logging.config
 import os
-import pathlib
-from collections import OrderedDict
+import csv
+import logging.config
+from itertools import islice
 
-from data_extraction.taxonomy_query import TaxonomyQuery
-
-import pandas as pd
-import numpy as np
-from lxml import html
-from pandas.io.json import json_normalize
-
-from pipeline_functions import extract_text, write_csv
+from data_extraction.export_data import jenkins_compatible_progress_bar
+from pipeline_functions import extract_text, get_primary_publishing_org, get_text, map_content_id_to_taxon_id
 from tokenizing import create_and_save_tokenizer
 import yaml
+from data import *
+
 
 
 # Setup pipeline logging
@@ -26,389 +21,164 @@ LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
 logging.config.fileConfig(LOGGING_CONFIG)
 logger = logging.getLogger('clean_content')
 
-# Get data file locations
-
 DATADIR = os.getenv('DATADIR')
-CONTENT_INPUT_FILE = 'content.json.gz'
 
-CONTENT_INPUT_PATH = os.path.join(DATADIR, CONTENT_INPUT_FILE)
+OUTPUT_CLEAN_CONTENT = os.path.join(DATADIR, 'clean_content.csv.temp')
+OUTPUT_CONTENT_TO_TAXON_MAP = os.path.join(DATADIR, 'content_to_taxon_map.csv.temp')
+
+OUTPUT_TEXT_TOKENIZER = os.path.join(DATADIR, 'combined_text_tokenizer.json.temp')
+OUTPUT_TITLE_TOKENIZER = os.path.join(DATADIR, 'title_tokenizer.json.temp')
+OUTPUT_DESCRIPTION_TOKENIZER = os.path.join(DATADIR, 'description_tokenizer.json.temp')
+
+OUTPUT_METADATA_LISTS = os.path.join(DATADIR, 'metadata_lists.yaml.temp')
 
-# If file does not exist.
-if not os.path.exists(CONTENT_INPUT_PATH):
-    logger.exception('%s does not exist', CONTENT_INPUT_PATH)
-    raise IOError("File not found.")
 
-DOCUMENT_TYPE_FILE = 'document_type_group_lookup.json'
-DOCUMENT_TYPE_PATH = os.path.join(DATADIR, DOCUMENT_TYPE_FILE)
 
-CONTENT_OUTPUT_FILE = 'clean_content.csv.gz'
-CONTENT_OUTPUT_PATH = os.path.join(DATADIR, CONTENT_OUTPUT_FILE)
+class Metadata:
+    def __init__(self):
+        self.document_types = set()
+        self.primary_publishing_organisations = set()
+        self.publishing_apps = set()
+
+    def write(self):
+        logger.info('saving metadata lists')
 
-UNTAGGED_OUTPUT_FILE = 'untagged_content.csv.gz'
-UNTAGGED_OUTPUT_PATH = os.path.join(DATADIR, UNTAGGED_OUTPUT_FILE)
+        with open(OUTPUT_METADATA_LISTS, "w") as f:
+            yaml.dump({
+                'document_type': sorted(self.document_types),
+                'primary_publishing_organisation': sorted(self.primary_publishing_organisations),
+                'publishing_app': sorted(self.publishing_apps)
+            }, f)
 
-FULL_CONTENT_OUTPUT_FILE = 'full_content.csv.gz'
-FULL_CONTENT_OUTPUT_PATH = os.path.join(DATADIR, FULL_CONTENT_OUTPUT_FILE)
 
-# Read in raw content file
-logger.info('Importing data from %s.', CONTENT_INPUT_PATH)
+class TextData:
+    def __init__(self):
+        self.titles = []
+        self.descriptions = []
+        self.combined_texts = []
+
+    def tokenize_and_save(self):
+        logger.info('tokenizing texts')
+        create_and_save_tokenizer(
+            self.combined_texts,
+            num_words=20000,
+            outfilename=OUTPUT_TEXT_TOKENIZER
+        )
 
-# Convert to uri to satisfy pd.read_json
+        logger.info('tokenizing title')
+        create_and_save_tokenizer(
+            self.titles,
+            num_words=10000,
+            outfilename=OUTPUT_TITLE_TOKENIZER
+        )
+
+        logger.info('tokenizing description')
+        create_and_save_tokenizer(
+            self.descriptions,
+            num_words=10000,
+            outfilename=OUTPUT_DESCRIPTION_TOKENIZER
+        )
 
-CONTENT_INPUT_PATH_URI = pathlib.Path(CONTENT_INPUT_PATH).as_uri()
 
-content = pd.read_json(
-    CONTENT_INPUT_PATH_URI,
-    compression='gzip',
-    orient='table',
-    typ='frame',
-    dtype=True,
-    convert_axes=True,
-    convert_dates=True,
-    keep_default_dates=True,
-    numpy=False,
-    precise_float=False,
-    date_unit=None
-)
 
-# Drop some columns.
+HEADER_LIST = [
+    "base_path",
+    "content_id",
+    "description",
+    "document_type",
+    "first_published_at",
+    "locale",
+    "primary_publishing_organisation",
+    "publishing_app",
+    "title",
+    "body",
+    "combined_text"
+]
 
-# content.drop([''],axis=1,inplace=True)
 
-# Check content dataframe
-if not content.shape[0] > 100000:
-    logger.warning('Less than 100,000 rows in raw content')
+def process_content_item(content_item, clean_content_writer, content_to_taxon_map_writer, metadata, textdata):
+    if content_item['locale'] != 'en':
+        return
 
-logger.info('Number of rows in raw content: %s.', content.shape[0])
+    if content_item['document_type'] in (
+        'worldwide_organisation',
+        'placeholder_world_location_news_page',
+        'travel_advice'
+    ):
+        return # out-of-scope items
 
-logger.info('Number of duplicate content_ids in raw content: %s.',
-            content[content.duplicated('content_id')].shape[0])
-logger.debug('Printing head from content: %s.', content.head())
+    content_item['title'] = extract_text(content_item["title"])
+    content_item['description'] = extract_text(content_item["description"])
+    content_item['body'] = get_text(content_item['details'])
 
-# Read in lookup table for document type group
-logger.info('Importing document type group lookup from %s.',
-            DOCUMENT_TYPE_PATH)
+    content_item['combined_text'] = " ".join(content_item[x] for x in ('title', 'description', 'body'))
+    primary_publishing_organisation = get_primary_publishing_org(content_item)
 
-with open(DOCUMENT_TYPE_PATH, 'r') as fp:
-    lookup_dict = json.load(fp)
+    if primary_publishing_organisation:
+        content_item['primary_publishing_organisation'] = primary_publishing_organisation['title']
+        metadata.primary_publishing_organisations.add(primary_publishing_organisation['title'])
 
-docgp_lookup = pd.DataFrame.from_dict(lookup_dict, orient='index')
-docgp_lookup.columns = ['document_type_gp']
+    # Get content_id, taxon_id pairs and write to csv
+    content_to_taxon_map_writer.writerows(map_content_id_to_taxon_id(content_item))
 
-# Merge lookup dataframe
-content = pd.merge(
-    left=content,
-    right=docgp_lookup,
-    left_on='document_type',
-    right_index=True,
-    how='outer',
-    indicator=True
-)
+    clean_content_writer.writerow(content_item.get(x) for x in HEADER_LIST)
 
-content.loc[content['_merge'] == 'left_only', 'document_type_gp'] = 'other'
-content.drop('_merge', axis=1, inplace=True)
+    metadata.document_types.add(content_item['document_type'])
+    metadata.publishing_apps.add(content_item['publishing_app'])
 
-# Add 'taxon' column
+    textdata.combined_texts.append(content_item['combined_text'])
+    textdata.titles.append(content_item['title'])
+    textdata.descriptions.append(content_item['description'])
 
-logger.info("Creating 'taxons' column.")
 
-taxonomy_query = TaxonomyQuery()
+def clean_content():
+    with open(OUTPUT_CLEAN_CONTENT, 'w') as f:
+        clean_content_writer = csv.writer(f)
+        clean_content_writer.writerow(HEADER_LIST)
 
+        with open(OUTPUT_CONTENT_TO_TAXON_MAP, 'w') as f:
+            content_to_taxon_map_writer = csv.writer(f)
+            content_to_taxon_map_writer.writerow(["content_id", "taxon_id"])
 
-def mapper(x_links):
-    if taxonomy_query.content_linked_to_root({'links': x_links}):
-        return list(map(lambda x: x['content_id'], x_links['taxons']))
-    else:
-        return np.NaN
+            textdata = TextData()
+            metadata = Metadata()
+            progress_bar = jenkins_compatible_progress_bar()
 
+            for content_item in progress_bar(items_from_content_file()):
 
-content.dropna(subset=['links'], inplace=True)
+                try:
+                    process_content_item(
+                        content_item,
+                        clean_content_writer,
+                        content_to_taxon_map_writer,
+                        metadata,
+                        textdata
+                    )
 
-content['taxons'] = content['links'].map(mapper)
+                except Exception as e:
+                    print(content_item)
+                    print(e)
+                    exit(1)
 
-logger.info("Creating 'primary_publishing_organisation' column.")
 
+    metadata.write()
+    textdata.tokenize_and_save()
 
-def pub_mapper(x_links):
-    if 'primary_publishing_organisation' in x_links:
-        return x_links['primary_publishing_organisation'][0]['title']
-    else:
-        return np.NaN
-
-
-content['primary_publishing_organisation'] = content['links'].map(pub_mapper)
-
-rm = ['analytics_identifier', 'links', 'need_ids', 'phase', 'publishing_request_id', 'rendering_app',
-      'schema_name', 'withdrawn_notice']
-
-logger.info("Dropping %s columns.", len(rm))
-
-content.drop(rm, axis=1, inplace=True)
-
-logger.info("Shape after drop: %s", content.shape)
-
-
-def is_json(raw_text):
-    try:
-        json_normalize(raw_text).columns.tolist()
-    except AttributeError:
-        return False
-    return True
-
-
-def is_html(raw_text):
-    return html.fromstring(str(raw_text)).find('.//*') is not None
-
-
-look = ['title', 'body']
-child_keys = ['title', 'description']
-filtered = ['body', 'brand', 'documents', 'final_outcome_detail', 'final_outcome_documents',
-            'government', 'headers', 'introduction', 'introductory_paragraph',
-            'licence_overview', 'licence_short_description', 'logo', 'metadata', 'more_information', 'need_to_know',
-            'other_ways_to_apply', 'summary', 'ways_to_respond', 'what_you_need_to_know', 'will_continue_on', 'parts',
-            'collection_groups']
-
-
-def get_text(x):
-    """
-From dict to json and back (to OrderedDict), iterate over json from details column (based on list filtered, should
-reconsider) and extract plaintext from included html.
-    :param x: details cell from dataset
-    :return: plaintext
-    """
-    total_text = ""
-    string_json = json.dumps(OrderedDict(x))
-    order_json = json.loads(string_json, object_pairs_hook=OrderedDict)
-    for key, raw_text in sorted(order_json.items()):
-        if key in filtered:
-            if isinstance(raw_text, str) and len(raw_text) > 1:
-                raw_text = raw_text.replace("-", " ")
-                raw_token = raw_text.split(" ")
-                if len(raw_token) > 0:
-                    raw_string = extract_text(raw_text)
-                    total_text += " " + raw_string
-            elif isinstance(raw_text, list) and len(raw_text) > 0:
-                for sub_text in raw_text:
-                    if is_json(sub_text):
-                        total_text += nested_extract(sub_text)
-                    elif is_html(sub_text):
-                        str_from_html = extract_text(sub_text)
-                        total_text += " " + str_from_html
-    return total_text.strip()
-
-
-def nested_extract(x):
-    """
-Iterate over nested json (avoiding recursion), flattening loops.
-    :param x: nested `details` cell contents
-    :return: plaintext
-    """
-    ttext = ""
-    string_json2 = json.dumps(OrderedDict(x))
-    order_json2 = json.loads(string_json2, object_pairs_hook=OrderedDict)
-    if ('body' or 'title') in order_json2.keys():
-        for item in look:
-            raw_string2 = extract_text(order_json2[item])
-            if len(raw_string2.split()) > 1:
-                ttext += " " + raw_string2
-    elif 'child_sections' in order_json2.keys():
-        for child in order_json2['child_sections']:
-            for key in child_keys:
-                ttext += " " + child[key]
-    return ttext
+    for filename in (
+            OUTPUT_CLEAN_CONTENT,
+            OUTPUT_CONTENT_TO_TAXON_MAP,
+            OUTPUT_TEXT_TOKENIZER,
+            OUTPUT_TITLE_TOKENIZER,
+            OUTPUT_DESCRIPTION_TOKENIZER,
+            OUTPUT_METADATA_LISTS
+    ):
+        os.rename(filename, os.path.splitext(filename)[0])
 
+if __name__ == '__main__':
+    clean_content()
 
-# Filter out content not in english (locale =='en')
 
-logger.info('Filtering out non-english documents')
-logger.info('content.shape before filtering: %s', content.shape)
 
-content = content[content.locale == 'en']
 
-logger.info("content.shape after keeping only english content: %s", content.shape)
 
-# stripout out-of-scope World items
 
-logger.info('content shape before removing doctypes related to world %s', content.shape)
-content = content[content.document_type != 'worldwide_organisation']
-content = content[content.document_type != 'placeholder_world_location_news_page']
-content = content[content.document_type != 'travel_advice']
-logger.info('content shape after removing doctypes related to world %s', content.shape)
-
-# Clean the html
-
-logger.info('Extracting title, description, and text from content.')
-
-logger.info('Extracting text from nested json tags (previously body)')
-print("Empty details:", content['details'].isna().sum())
-content.dropna(subset=['details'], inplace=True)
-
-content['body'] = content['details'].map(get_text)
-
-logger.debug('Text extracted from body looks like: %s', content['body'][0:10])
-
-logger.info('Extracting text from description')
-content = content.assign(description=content['description'].apply(extract_text))
-logger.debug('Text extracted from description looks like: %s', content['description'][0:10])
-
-logger.info('Extracting text from title')
-content = content.assign(title=content['title'].apply(extract_text))
-logger.debug('Text extracted from title looks like: %s', content['title'][0:10])
-
-logger.info('Concatenating title, description, and text.')
-content['combined_text'] = content['title'] + ' ' + content['description'] + ' ' + content['body']
-
-# TOKENIZE ALL content before splitting into labelled/unlabelled
-logger.info('tokenizing combined_text')
-
-create_and_save_tokenizer(
-    content['combined_text'], 
-    num_words=20000, 
-    outfilename=os.path.join(DATADIR, "combined_text_tokenizer.json")
-)
-
-logger.info('tokenizing title')
-
-create_and_save_tokenizer(
-    content['title'], 
-    num_words=10000, 
-    outfilename=os.path.join(DATADIR, "title_tokenizer.json")
-)
-
-logger.info('tokenizing description')
-
-create_and_save_tokenizer(
-    content['description'], 
-    num_words=10000, 
-    outfilename=os.path.join(DATADIR, "description_tokenizer.json")
-)
-
-# SAVE OUT METADATA LISTS FOR USE IN dataprep before splitting into labelled/unlabelled
-logger.info('saving metadata lists')
-
-with open(os.path.join(DATADIR,"metadata_lists.yaml"), "w") as f:
-    yaml.dump({
-        'document_type': sorted(content['document_type'].unique()),
-        'primary_publishing_organisation': sorted(
-            filter(lambda x: isinstance(x, str), content['primary_publishing_organisation'].unique())
-        ),
-        'publishing_app': sorted(content['publishing_app'].unique())
-    }, f)
-
-# Save out full content file for use in evaluation scripts
-write_csv(content, 'Full content',
-          FULL_CONTENT_OUTPUT_PATH, logger)
-
-# Identify and select untagged content items
-
-logger.info('Separating untagged content')
-
-untagged = content[content['taxons'].isnull()]
-
-logger.debug("Checking type of untagged['first_published_at']: %s",
-             untagged['first_published_at'].dtype)
-
-# Re-index untagged content items as date first published
-
-logger.debug("Creating timeseries index on untagged['first_published_at']")
-
-untagged = untagged.assign(first_published_at=pd.to_datetime(untagged['first_published_at']))
-
-logger.debug("Checking type of untagged['first_published_at']: %s",
-             untagged['first_published_at'].dtype)
-
-logger.debug("Setting timestamp to index on untagged")
-untagged.index = untagged['first_published_at']
-
-# Save untagged content items
-
-write_csv(untagged, 'Untagged content',
-          UNTAGGED_OUTPUT_PATH, logger)
-
-logger.info('Removing content with no taxons')
-
-# TODO: Notebook version used content['taxons'] =
-# content['taxons'].where((pd.notnull(content['taxons'])), None) needs testing
-# to ensure that the alternative below works ok.
-
-content = content[content['taxons'].notnull()]
-
-logger.debug('content.columns: %s', content.columns)
-
-# Save column names, excluding 'taxons' for later melt
-
-content_columns = content.drop(['taxons'], axis=1).columns.values
-
-logger.info('Creating content_wide dataframe')
-
-# Concatenate columns (without taxons) with taxons that have been split
-# into columns.
-
-content_wide = pd.concat([content.drop('taxons', axis=1),
-                          content['taxons'].apply(pd.Series)], axis=1)
-
-logger.debug('content_wide[0:10]: %s', content_wide[0:10])
-logger.debug('content_wide.shape: %s', content_wide.shape)
-logger.info('Creating content_long dataframe')
-
-content_long = pd.melt(content_wide, id_vars=content_columns, value_name='taxon')
-
-logger.debug('content_long[0:10]: %s', content_long[0:10])
-logger.debug('content_long.shape: %s', content_long.shape)
-logger.debug('content_long.columns: %s', content_long.columns)
-
-# Create mask to remove null taxons
-
-logger.info('Create mask of null taxons')
-
-mask = content_long['taxon'].isnull()
-
-logger.debug('There are %s rows to be dropped', len(mask))
-
-# Drop rows with null taxons
-
-logger.info('Drop rows with null taxons.')
-
-content_long = content_long[~mask]
-
-logger.debug('content_long.shape: %s', content_long.shape)
-
-logger.info('Extract content_id into taxon_id column.')
-
-content_long.rename(columns={'taxon': 'taxon_id'}, inplace=True)
-
-logger.debug("content_long['taxon_id'][0:10]: %s", content_long['taxon_id'][0:10])
-
-logger.info('content_long.shape: %s', content_long.shape)
-logger.info('columns %s', content_long.columns.tolist())
-
-logger.debug('content_long.head(): %s', content_long.head())
-
-# Assert content long has more than 300000 rows
-
-logger.info('Assert that column_long has tmore than 300,000 rows.')
-
-if not content_long.shape[0] > 300000:
-    logger.warning('Less than 300,000 rows in content_long (labelled content)')
-
-# Confirm that untagged content is not contained in content_long
-
-logger.info('Check that content_long has unique content_ids to untagged')
-
-untagged_drop_check = pd.merge(
-    left=content_long,
-    right=untagged,
-    on='content_id',
-    how='outer',
-    indicator=True
-)
-
-if not untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0] < 10:
-    logger.exception('There are %s content items in both the untagged and labelled data',
-                     untagged_drop_check['taxon_id'][untagged_drop_check['_merge'] == 'both'].shape[0])
-    raise Exception('Tagged/Untagged overlap')
-
-# Write out to intermediate csv
-
-write_csv(content_long, 'Long content dataframe',
-          CONTENT_OUTPUT_PATH, logger)

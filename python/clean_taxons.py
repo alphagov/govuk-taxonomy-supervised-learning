@@ -19,24 +19,21 @@ LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
 logging.config.fileConfig(LOGGING_CONFIG)
 logger = logging.getLogger('clean_taxons')
 
-# Get data file locations
-
-parser = argparse.ArgumentParser()
-parser.add_argument("input_file")
-parser.add_argument("output_file")
-
-args = parser.parse_args()
-
 DATADIR = os.getenv('DATADIR')
+
+
+TAXONS_INPUT_PATH = os.path.join(DATADIR, 'taxons.json.gz')
+TAXONS_OUTPUT_PATH = os.path.join(DATADIR, 'clean_taxons.csv.gz')
+
 
 # Convert to uri to satisfy pd.read_json
 
-logger.info('Importing taxons from %s as taxons', args.input_file)
+logger.info('Importing taxons from %s as taxons', TAXONS_INPUT_PATH)
 
 # Load taxons
 
 taxons = pd.read_json(
-    args.input_file,
+    TAXONS_INPUT_PATH,
     orient='table',
     typ='frame',
     dtype=True,
@@ -245,10 +242,20 @@ taxonslevels['level5taxon'] = np.where(
 
 # copy the working df back to taxons
 
-df_taxons = taxonslevels.copy()
+df_taxons = taxonslevels[[
+    'base_path',
+    'content_id',
+    'taxon_name',
+    'level1taxon',
+    'level2taxon',
+    'level3taxon',
+    'level4taxon',
+    'level5taxon'
+]].copy()
+
 
 logger.debug('Print df_taxons.columns after drop: %s', list(df_taxons.columns.values))
 
 # Write out df_taxons to csv using pipeline_functions.df_taxons
 
-write_csv(df_taxons, 'Taxons', args.output_file, logger)
+write_csv(df_taxons, 'Taxons', TAXONS_OUTPUT_PATH, logger)

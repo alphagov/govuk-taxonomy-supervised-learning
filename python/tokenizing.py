@@ -7,8 +7,10 @@ from collections import OrderedDict
 
 
 def create_and_save_tokenizer(data, num_words, outfilename):
-    tokenizer = Tokenizer(num_words=num_words)
+    tokenizer = Tokenizer(oov_token='UNK', num_words=num_words+1)
     tokenizer.fit_on_texts(data)
+    tokenizer.word_index = {e: i for e, i in tokenizer.word_index.items() if i <= num_words}
+    tokenizer.word_index[tokenizer.oov_token] = num_words + 1
 
     tokenizer_dict = {
         "word_counts": list(tokenizer.word_counts.items()),
