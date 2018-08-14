@@ -21,6 +21,7 @@ import json
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
 DATADIR = os.getenv('DATADIR')
+SINCE_THRESHOLD = os.getenv('SINCE_THRESHOLD')
 METADATA_LIST = os.getenv('METADATA_LIST').split()
 
 
@@ -69,9 +70,8 @@ def upsample_low_support_taxons(dataframe):
     training_indices = [dataframe.index[i][0] for i in range(0, size_train)]
 
     upsampled_training = pd.DataFrame()
-    last_taxon = len(dataframe.columns) + 1
 
-    for taxon in range(1, last_taxon):
+    for taxon in dataframe.columns:
 
         training_samples_tagged_to_taxon = dataframe[
                                                dataframe[taxon] == 1
@@ -286,7 +286,7 @@ def process_split(
     )
 
 
-def load_labelled_level2():
+def load_labelled_level2(SINCE_THRESHOLD):
     dataframe = pd.read_csv(
         os.path.join(DATADIR, 'labelled_level2.csv.gz'),
         dtype=object,
@@ -306,6 +306,8 @@ def load_labelled_level2():
     # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
     dataframe['level2taxon_code'] = dataframe.level2taxon.astype('category').cat.codes + 1
 
+    save_taxon_label_index(dataframe)
+
     logging.info('Number of unique level2taxons: {}'.format(dataframe.level2taxon.nunique()))
 
     # count the number of taxons per content item into new column
@@ -313,7 +315,22 @@ def load_labelled_level2():
         ["content_id"]
     )['content_id'].transform("count")
 
+    dataframe['first_published_at'] = pd.to_datetime(dataframe['first_published_at'])
+    dataframe.index = dataframe['first_published_at']
+    
+    dataframe = dataframe[dataframe['first_published_at'] >= pd.Timestamp(SINCE_THRESHOLD)].copy()
+
     return dataframe
+
+def save_taxon_label_index(dataframe):
+   
+    # create dictionary of taxon category code to string label for use in model evaluation
+    labels_index = dict(zip((dataframe['level2taxon_code']), dataframe['level2taxon']))
+
+    with open(os.path.join(DATADIR, "taxon_labels_index.json"),'w') as f:
+        json.dump(labels_index, f)
+    
+
 
 
 if __name__ == "__main__":
@@ -323,10 +340,13 @@ if __name__ == "__main__":
     logger = logging.getLogger('dataprep')
 
     logger.info('Loading data')
-    labelled_level2 = load_labelled_level2()
+    labelled_level2 = load_labelled_level2(SINCE_THRESHOLD)
 
     logger.info('Creating multilabel dataframe')
     binary_multilabel = create_binary_multilabel(labelled_level2)
+
+    np.save(os.path.join(DATADIR, 'taxon_codes.npy'), binary_multilabel.columns)
+    taxon_codes = binary_multilabel.columns
 
     # ***** RESAMPLING OF MINORITY TAXONS **************
     # ****************************************************
