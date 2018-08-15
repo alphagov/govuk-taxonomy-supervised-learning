@@ -31,20 +31,37 @@ METADATA_LIST = os.getenv('METADATA_LIST').split()
 # reshape to wide per taxon and keep the combined text so indexing is consistent when splitting X from Y
 
 
-def create_binary_multilabel(dataframe):
-    multilabel = dataframe.pivot_table(
-        index=[
-            'content_id',
-            'combined_text',
-            'title',
-            'description'
-        ],
-        columns='level2taxon_code',
-        values='num_taxon_per_content'
-    )
+def create_binary_multilabel(dataframe, level=2):
+    if level==2:
+        multilabel = dataframe.pivot_table(
+            index=[
+                'content_id',
+                'combined_text',
+                'title',
+                'description'
+            ],
+            columns='level2taxon_code',
+            values='num_taxon_per_content'
+        )
 
-    logger.info('labelled_level2 shape: {}'.format(dataframe.shape))
-    logger.info('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
+        print('labelled_level2 shape: {}'.format(dataframe.shape))
+        print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
+
+    if level==1:
+          multilabel = dataframe.pivot_table(
+            index=[
+                'content_id',
+                'combined_text',
+                'title',
+                'description'
+            ],
+            columns='level1taxon_code',
+            values='num_taxon_per_content'
+          )
+
+          print('labelled_level1 shape: {}'.format(dataframe.shape))
+          print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
+
 
     multilabel.columns.astype('str')
 
@@ -64,7 +81,7 @@ def create_binary_multilabel(dataframe):
     return binary_multi
 
 
-def upsample_low_support_taxons(dataframe):
+def upsample_low_support_taxons(dataframe, size_train):
     # extract indices of training samples, which are to be upsampled
 
     training_indices = [dataframe.index[i][0] for i in range(0, size_train)]
@@ -78,26 +95,26 @@ def upsample_low_support_taxons(dataframe):
                                                ][:size_train]
 
         if training_samples_tagged_to_taxon.shape[0] < 500:
-            logger.info("Taxon code: %s", taxon)
-            logger.info("SMALL SUPPORT: %s", training_samples_tagged_to_taxon.shape[0])
+            logging.info("Taxon code: %s", taxon)
+            logging.info("SMALL SUPPORT: %s", training_samples_tagged_to_taxon.shape[0])
             df_minority = training_samples_tagged_to_taxon
             if not df_minority.empty:
                 # Upsample minority class
-                logger.info(df_minority.shape)
+                logging.info(df_minority.shape)
                 df_minority_upsampled = resample(df_minority,
                                                  replace=True,  # sample with replacement
                                                  n_samples=(500),
                                                  # to match majority class, switch to max_content_freq if works
                                                  random_state=123)  # reproducible results
-                logger.info("FIRST 5 IDs: %s", [df_minority_upsampled.index[i][0] for i in range(0, 5)])
+                logging.info("FIRST 5 IDs: %s", [df_minority_upsampled.index[i][0] for i in range(0, 5)])
                 # Combine majority class with upsampled minority class
                 upsampled_training = pd.concat([upsampled_training, df_minority_upsampled])
                 # Display new shape
-                logger.info("UPSAMPLING: %s", upsampled_training.shape)
+                logging.info("UPSAMPLING: %s", upsampled_training.shape)
 
     upsampled_training = shuffle(upsampled_training, random_state=0)
 
-    logger.info("Size of upsampled_training: {}".format(upsampled_training.shape[0]))
+    logging.info("Size of upsampled_training: {}".format(upsampled_training.shape[0]))
 
     balanced = pd.concat([upsampled_training, dataframe])
     balanced.astype(int)
@@ -364,7 +381,7 @@ if __name__ == "__main__":
 
     logger.info('Upsample low support taxons')
 
-    balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel)
+    balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel, size_train)
 
     size_train += upsample_size
 
