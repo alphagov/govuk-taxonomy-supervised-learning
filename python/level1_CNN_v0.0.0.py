@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# ## Convolutional NN to classify govuk content to level2 taxons
+# ## Convolutional NN to classify govuk content to level1 taxons
 
 # Based on:
 # https://blog.keras.io/using-pre-trained-word-embeddings-in-a-keras-model.html
@@ -30,7 +30,7 @@ from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
 import json
 
-experiment = Experiment(api_key=COMET_API_KEY, project_name='govuk_taxonomy_level2')
+experiment = Experiment(api_key=COMET_API_KEY, project_name='govuk_taxonomy_level1')
 experiment.set_name(MODEL_NAME)
 
 
@@ -44,7 +44,7 @@ NUM_WORDS = 20000  # keras tokenizer num_words: None or int. Maximum number of w
 
 
 # ### Read in data
-train = np.load(os.path.join(DATADIR, 'train_arrays.npz'))
+train = np.load(os.path.join(DATADIR, 'level1_train_arrays.npz'))
 
 x_train = train['x']
 meta_train = train['meta'].all().todense()
@@ -59,7 +59,7 @@ print('desc_train.shape = {}'.format(desc_train.shape))
 print('y_train.shape = {}'.format(y_train.shape))
 
 
-dev = np.load(os.path.join(DATADIR, 'dev_arrays.npz'))
+dev = np.load(os.path.join(DATADIR,  'level1_dev_arrays.npz'))
 
 x_dev = dev['x']
 meta_dev = dev['meta'].all().todense()
@@ -73,7 +73,7 @@ print('title_dev.shape = {}'.format(title_dev.shape))
 print('desc_dev.shape = {}'.format(desc_dev.shape))
 print('y_dev.shape = {}'.format(y_dev.shape))
 
-test = np.load(os.path.join(DATADIR, 'test_arrays.npz'))
+test = np.load(os.path.join(DATADIR, 'level1_test_arrays.npz'))
 
 x_test = test['x']
 meta_test = test['meta'].all().todense()
@@ -256,9 +256,9 @@ with experiment.validate():
     experiment.log_multiple_metrics(dev_metrics)
 
 print('loading taxon_codes and labels_index')
-taxon_codes = pd.Series(np.load(os.path.join(DATADIR, 'taxon_codes.npy')))
+taxon_codes = pd.Series(np.load(os.path.join(DATADIR, 'level1_taxon_codes.npy')))
 
-with open(os.path.join(DATADIR, "taxon_labels_index.json"), 'r') as f:
+with open(os.path.join(DATADIR, "level1taxon_labels_index.json"), 'r') as f:
     labels_index = json.load(f, object_hook=lambda d: {int(k): [int(i) for i in v] if isinstance(v, list) else v for k, v in d.items()})
 
 print('creating plotting_metrics dataframe')
@@ -309,7 +309,7 @@ to_file(y_train, "true_train", y_train)
 to_file(y_dev, "true_dev", y_train)
 
 print('saving model')
-model.save(os.path.join(DATADIR, MODEL_NAME))
+model.save(os.path.join(DATADIR,'level1_'+MODEL_NAME))
 
 # experiment.log_figure(figure_name='dev_support', figure=train_support)
 # experiment.log_figure(figure_name='train_support', figure=dev_support)
