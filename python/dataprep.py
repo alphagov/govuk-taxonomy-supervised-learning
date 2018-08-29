@@ -25,42 +25,74 @@ SINCE_THRESHOLD = os.getenv('SINCE_THRESHOLD')
 METADATA_LIST = os.getenv('METADATA_LIST').split()
 
 
-# **** RESHAPE data long -> wide by taxon *******
-# ***********************************************
+def load_labelled(SINCE_THRESHOLD, level='level2'):
+    if level=='agnostic' or level=='level1':
+         dataframe = pd.read_csv(
+        os.path.join(DATADIR, 'labelled.csv.gz'),
+        dtype=object,
+        compression='gzip'
+         )
+    else:
+        dataframe = pd.read_csv(
+        os.path.join(DATADIR, 'labelled_level2.csv.gz'),
+        dtype=object,
+        compression='gzip'
+    )
 
-# reshape to wide per taxon and keep the combined text so indexing is consistent when splitting X from Y
+    if level=='level2':
+        # Create World taxon in case any items not identified
+        # through doc type in clean_content are still present
+        dataframe.loc[dataframe['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
+
+    # **** TAXONS TO CATEGORICAL -> DICT **********
+    # *********************************************
+
+    # creating categorical variable for level2taxons from values
+    dataframe[level+'taxon'] = dataframe[level+'taxon'].astype('category')
+
+    # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
+    dataframe[level+'taxon_code'] = dataframe[level+'taxon'].astype('category').cat.codes + 1
+
+    save_taxon_label_index(dataframe, level=level)
+
+    logging.info('Number of unique {}taxons: {}'.format(level, dataframe[level+'taxon'].nunique()))
+
+    # count the number of taxons per content item into new column
+    dataframe['num_taxon_per_content'] = dataframe.groupby(
+        ["content_id"]
+    )['content_id'].transform("count")
+
+    dataframe['first_published_at'] = pd.to_datetime(dataframe['first_published_at'])
+    dataframe.index = dataframe['first_published_at']
+    
+    dataframe = dataframe[dataframe['first_published_at'] >= pd.Timestamp(SINCE_THRESHOLD)].copy()
+
+    return dataframe
+
+def save_taxon_label_index(dataframe, level='level2'):
+   
+    # create dictionary of taxon category code to string label for use in model evaluation
+    labels_index = dict(zip((dataframe[level+'taxon_code']), dataframe[level+'taxon']))
+
+    with open(os.path.join(DATADIR, level+"taxon_labels_index.json"),'w') as f:
+        json.dump(labels_index, f)
 
 
-def create_binary_multilabel(dataframe, level=2):
-    if level==2:
-        multilabel = dataframe.pivot_table(
+def create_binary_multilabel(dataframe, level='level2taxon_code'):
+    """reshapes data long -> wide by taxon. keeps the combined text so indexing is consistent when splitting X from Y"""
+    multilabel = dataframe.pivot_table(
             index=[
                 'content_id',
                 'combined_text',
                 'title',
                 'description'
             ],
-            columns='level2taxon_code',
+            columns=level,
             values='num_taxon_per_content'
         )
 
-        print('labelled_level2 shape: {}'.format(dataframe.shape))
-        print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
-
-    if level==1:
-          multilabel = dataframe.pivot_table(
-            index=[
-                'content_id',
-                'combined_text',
-                'title',
-                'description'
-            ],
-            columns='level1taxon_code',
-            values='num_taxon_per_content'
-          )
-
-          print('labelled_level1 shape: {}'.format(dataframe.shape))
-          print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
+    print('labelled_{} shape: {}'.format(level, dataframe.shape))
+    print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
 
 
     multilabel.columns.astype('str')
@@ -301,51 +333,6 @@ def process_split(
         os.path.join(DATADIR, '{}_arrays.npz'.format(split_name)),
         **split_data
     )
-
-
-def load_labelled_level2(SINCE_THRESHOLD):
-    dataframe = pd.read_csv(
-        os.path.join(DATADIR, 'labelled_level2.csv.gz'),
-        dtype=object,
-        compression='gzip'
-    )
-
-    # Create World taxon in case any items not identified
-    # through doc type in clean_content are still present
-    dataframe.loc[dataframe['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
-
-    # **** TAXONS TO CATEGORICAL -> DICT **********
-    # *********************************************
-
-    # creating categorical variable for level2taxons from values
-    dataframe['level2taxon'] = dataframe['level2taxon'].astype('category')
-
-    # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
-    dataframe['level2taxon_code'] = dataframe.level2taxon.astype('category').cat.codes + 1
-
-    save_taxon_label_index(dataframe)
-
-    logging.info('Number of unique level2taxons: {}'.format(dataframe.level2taxon.nunique()))
-
-    # count the number of taxons per content item into new column
-    dataframe['num_taxon_per_content'] = dataframe.groupby(
-        ["content_id"]
-    )['content_id'].transform("count")
-
-    dataframe['first_published_at'] = pd.to_datetime(dataframe['first_published_at'])
-    dataframe.index = dataframe['first_published_at']
-    
-    dataframe = dataframe[dataframe['first_published_at'] >= pd.Timestamp(SINCE_THRESHOLD)].copy()
-
-    return dataframe
-
-def save_taxon_label_index(dataframe):
-   
-    # create dictionary of taxon category code to string label for use in model evaluation
-    labels_index = dict(zip((dataframe['level2taxon_code']), dataframe['level2taxon']))
-
-    with open(os.path.join(DATADIR, "taxon_labels_index.json"),'w') as f:
-        json.dump(labels_index, f)
     
 
 
@@ -357,7 +344,7 @@ if __name__ == "__main__":
     logger = logging.getLogger('dataprep')
 
     logger.info('Loading data')
-    labelled_level2 = load_labelled_level2(SINCE_THRESHOLD)
+    labelled_level2 = load_labelled(SINCE_THRESHOLD)
 
     logger.info('Creating multilabel dataframe')
     binary_multilabel = create_binary_multilabel(labelled_level2)
