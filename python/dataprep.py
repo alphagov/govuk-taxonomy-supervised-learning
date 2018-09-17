@@ -27,7 +27,7 @@ METADATA_LIST = os.getenv('METADATA_LIST').split()
 
 def load_labelled(SINCE_THRESHOLD, level='level2'):
     if level=='agnostic' or level=='level1':
-         dataframe = pd.read_csv(
+        dataframe = pd.read_csv(
         os.path.join(DATADIR, 'labelled.csv.gz'),
         dtype=object,
         compression='gzip'
@@ -44,19 +44,21 @@ def load_labelled(SINCE_THRESHOLD, level='level2'):
         # through doc type in clean_content are still present
         dataframe.loc[dataframe['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
 
-    # **** TAXONS TO CATEGORICAL -> DICT **********
-    # *********************************************
+    if level=='level1' or level=='level2':
+        # creating categorical variable for level2taxons from values
+        dataframe[level+'taxon'] = dataframe[level+'taxon'].astype('category')
 
-    # creating categorical variable for level2taxons from values
-    dataframe[level+'taxon'] = dataframe[level+'taxon'].astype('category')
+        # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
+        dataframe[level+'taxon_code'] = dataframe[level+'taxon'].astype('category').cat.codes + 1
+        logging.info('Number of unique {}taxons: {}'.format(level, dataframe[level+'taxon'].nunique()))
 
-    # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
-    dataframe[level+'taxon_code'] = dataframe[level+'taxon'].astype('category').cat.codes + 1
+    else:
+        dataframe['taxon_id'] = dataframe['taxon_id'].astype('category')
+        dataframe['taxon_code'] =  dataframe.taxon_id.astype('category').cat.codes + 1
+        logging.info('Number of unique {}taxons: {}'.format(level, dataframe['taxon_id'].nunique()))
 
     save_taxon_label_index(dataframe, level=level)
-
-    logging.info('Number of unique {}taxons: {}'.format(level, dataframe[level+'taxon'].nunique()))
-
+    
     # count the number of taxons per content item into new column
     dataframe['num_taxon_per_content'] = dataframe.groupby(
         ["content_id"]
@@ -70,15 +72,22 @@ def load_labelled(SINCE_THRESHOLD, level='level2'):
     return dataframe
 
 def save_taxon_label_index(dataframe, level='level2'):
-   
-    # create dictionary of taxon category code to string label for use in model evaluation
-    labels_index = dict(zip((dataframe[level+'taxon_code']), dataframe[level+'taxon']))
+
+    if level=='level1' or level=='level2':
+        # create dictionary of taxon category code to string label for use in model evaluation
+        labels_index = dict(zip((dataframe[level+'taxon_code']), dataframe[level+'taxon']))
+    else:
+        labels_index = dict(zip((dataframe['taxon_code']), dataframe['taxon_base_path']))
+        taxonid_index = dict(zip((dataframe['taxon_code']), dataframe['taxon_id']))
 
     with open(os.path.join(DATADIR, level+"taxon_labels_index.json"),'w') as f:
         json.dump(labels_index, f)
 
+    with open(os.path.join(DATADIR, level+"taxon_id_index.json"),'w') as f:
+        json.dump(taxonid_index, f)
 
-def create_binary_multilabel(dataframe, level='level2taxon_code'):
+
+def create_binary_multilabel(dataframe, taxon_code_column='level2taxon_code'):
     """reshapes data long -> wide by taxon. keeps the combined text so indexing is consistent when splitting X from Y"""
     multilabel = dataframe.pivot_table(
             index=[
@@ -87,11 +96,11 @@ def create_binary_multilabel(dataframe, level='level2taxon_code'):
                 'title',
                 'description'
             ],
-            columns=level,
+            columns=taxon_code_column,
             values='num_taxon_per_content'
         )
 
-    print('labelled_{} shape: {}'.format(level, dataframe.shape))
+    print('labelled_{} shape: {}'.format(taxon_code_column, dataframe.shape))
     print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
 
 
@@ -138,7 +147,7 @@ def upsample_low_support_taxons(dataframe, size_train):
                                                  n_samples=(500),
                                                  # to match majority class, switch to max_content_freq if works
                                                  random_state=123)  # reproducible results
-                logging.info("FIRST 5 IDs: %s", [df_minority_upsampled.index[i][0] for i in range(0, 5)])
+                # logging.info("FIRST 5 IDs: %s", [df_minority_upsampled.index[i][0] for i in range(0, 5)])
                 # Combine majority class with upsampled minority class
                 upsampled_training = pd.concat([upsampled_training, df_minority_upsampled])
                 # Display new shape

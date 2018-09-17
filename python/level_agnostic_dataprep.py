@@ -6,19 +6,11 @@ import warnings
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from keras.preprocessing.sequence import pad_sequences
-from keras.utils import to_categorical
-from scipy import sparse
-from sklearn.exceptions import DataConversionWarning
-from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.utils import shuffle, resample
 import yaml
-import tokenizing
 import json
 
-warnings.filterwarnings(action='ignore', category=DataConversionWarning)
+# warnings.filterwarnings(action='ignore', category=DataConversionWarning)
+
 
 from dataprep import *
 
@@ -31,17 +23,19 @@ if __name__ == "__main__":
 
     LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
     logging.config.fileConfig(LOGGING_CONFIG)
-    logger = logging.getLogger('level1_dataprep')
+    logger = logging.getLogger('levelagnostic_dataprep')
 
     logger.info('Loading data')
-    labelled_level1 = load_labelled(SINCE_THRESHOLD, level='level1')
+    labelled = load_labelled(SINCE_THRESHOLD, level='agnostic')
 
     logger.info('Creating multilabel dataframe')
-    binary_multilabel = create_binary_multilabel(labelled_level1, taxon_code_column='level1taxon_code')
+    binary_multilabel = create_binary_multilabel(labelled, taxon_code_column='taxon_code')
+   
     print(binary_multilabel.columns)
 
-    np.save(os.path.join(DATADIR, 'level1_taxon_codes.npy'), binary_multilabel.columns)
+    np.save(os.path.join(DATADIR, 'levelagnostic_taxon_codes.npy'), binary_multilabel.columns)
     taxon_codes = binary_multilabel.columns
+    logging.info('Shape of binary_multilabel df: % {}'.format(binary_multilabel.shape))
 
     # ***** RESAMPLING OF MINORITY TAXONS **************
     # ****************************************************
@@ -50,7 +44,7 @@ if __name__ == "__main__":
     # - Test data = 10%
 
     size_before_resample = binary_multilabel.shape[0]
-
+   
     size_train = int(0.8 * size_before_resample)  # train split
     logging.info('Size of train set: %s', size_train)
 
@@ -61,13 +55,15 @@ if __name__ == "__main__":
 
     balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel, size_train)
 
+    logger.info("Shape of balanced_df: {}".format(balanced_df.shape))
+    
     size_train += upsample_size
 
     logger.info("New size of training set: {}".format(size_train))
 
     logger.info('Vectorizing metadata')
 
-    meta = create_meta(balanced_df.index.get_level_values('content_id'), labelled_level1)
+    meta = create_meta(balanced_df.index.get_level_values('content_id'), labelled)
 
     # **** TOKENIZE TEXT ********************
     # ************************************
@@ -122,6 +118,7 @@ if __name__ == "__main__":
     # convert columns to an array. Each row represents a content item,
     # each column an individual taxon
     binary_multilabel = balanced_df[list(balanced_df.columns)].values
+    logger.info('Shape of multilabel array {}'.format(binary_multilabel.shape))
     logger.info('Example row of multilabel array {}'.format(binary_multilabel[2]))
 
     data = {
@@ -133,7 +130,7 @@ if __name__ == "__main__":
         "content_id": balanced_df.index.get_level_values('content_id'),
     }
 
-    for split, name in zip(splits, ('level1_train', 'level1_dev', 'level1_test')):
+    for split, name in zip(splits, ('level_agnostic_train', 'level_agnostic_dev', 'level_agnostic_test')):
         logger.info("Generating {} split".format(name))
         process_split(
             name,
