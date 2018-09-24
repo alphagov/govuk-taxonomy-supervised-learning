@@ -34,10 +34,10 @@ if __name__ == "__main__":
     logger = logging.getLogger('level1_dataprep')
 
     logger.info('Loading data')
-    labelled_level1 = load_labelled(SINCE_THRESHOLD, level='level1')
+    labelled_level1 = load_labelled(SINCE_THRESHOLD, level='level1', branch=True)
 
     logger.info('Creating multilabel dataframe')
-    binary_multilabel = create_binary_multilabel(labelled_level1, taxon_code_column='level1taxon_code')
+    binary_multilabel = create_binary_multilabel(labelled_level1)
     print(binary_multilabel.columns)
 
     np.save(os.path.join(DATADIR, 'level1_taxon_codes.npy'), binary_multilabel.columns)

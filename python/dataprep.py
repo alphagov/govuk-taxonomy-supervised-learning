@@ -127,11 +127,9 @@ def save_taxon_label_index(dataframe, level='level2', branch=True):
         with open(os.path.join(DATADIR, level+"taxon_id_index.json"),'w') as f:
             json.dump(taxonid_index, f)
 
-
     with open(os.path.join(DATADIR, level+"taxon_labels_index.json"),'w') as f:
         json.dump(labels_index, f)
 
-   
 
 
 def create_binary_multilabel(dataframe):
