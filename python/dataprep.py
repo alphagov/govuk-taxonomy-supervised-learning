@@ -25,69 +25,116 @@ SINCE_THRESHOLD = os.getenv('SINCE_THRESHOLD')
 METADATA_LIST = os.getenv('METADATA_LIST').split()
 
 
-def load_labelled(SINCE_THRESHOLD, level='level2'):
-    if level=='agnostic' or level=='level1':
-        dataframe = pd.read_csv(
+def load_labelled(SINCE_THRESHOLD, level='level2', branch=True):
+    labelled = pd.read_csv(
         os.path.join(DATADIR, 'labelled.csv.gz'),
         dtype=object,
         compression='gzip'
          )
-    else:
-        dataframe = pd.read_csv(
-        os.path.join(DATADIR, 'labelled_level2.csv.gz'),
-        dtype=object,
-        compression='gzip'
-    )
+     # Create World taxon in case any items not identified #
+    if level == 'level2':
+         labelled.loc[labelled['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
 
-    if level=='level2':
-        # Create World taxon in case any items not identified
-        # through doc type in clean_content are still present
-        dataframe.loc[dataframe['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
-
-    if level=='level1' or level=='level2':
-        # creating categorical variable for level2taxons from values
-        dataframe[level+'taxon'] = dataframe[level+'taxon'].astype('category')
-
-        # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
-        dataframe[level+'taxon_code'] = dataframe[level+'taxon'].astype('category').cat.codes + 1
-        logging.info('Number of unique {}taxons: {}'.format(level, dataframe[level+'taxon'].nunique()))
-
-    else:
-        dataframe['taxon_id'] = dataframe['taxon_id'].astype('category')
-        dataframe['taxon_code'] =  dataframe.taxon_id.astype('category').cat.codes + 1
-        logging.info('Number of unique {}taxons: {}'.format(level, dataframe['taxon_id'].nunique()))
-
-    save_taxon_label_index(dataframe, level=level)
+        
+    labelled  = labelled.assign(level=np.where(labelled.level5taxon.notnull(), 5, 0))
+    labelled.loc[labelled['level4taxon'].notnull() & labelled['level5taxon'].isnull(), 'level'] = 4
+    labelled.loc[labelled['level3taxon'].notnull() & labelled['level4taxon'].isnull(), 'level'] = 3 
+    labelled.loc[labelled['level2taxon'].notnull() & labelled['level3taxon'].isnull(), 'level'] = 2 
+    labelled.loc[labelled['level1taxon'].notnull() & labelled['level2taxon'].isnull(), 'level'] = 1
+         
+    branches = pd.melt(labelled, id_vars=['base_path',
+                                          'content_id',
+                                          'description',
+                                          'document_type',
+                                          'first_published_at',
+                                          'locale',
+                                          'primary_publishing_organisation',
+                                          'publishing_app',
+                                          'title',
+                                          'body',
+                                          'combined_text',
+                                          'taxon_id',
+                                          'taxon_base_path',
+                                          'taxon_name',
+                                          'level'],
+                       value_vars=['level1taxon', 'level2taxon', 'level3taxon', 'level4taxon', 'level5taxon'],
+                       var_name='branch_level',
+                       value_name='branch_name')
     
+    branches = branches[branches.branch_name.notna()].copy()
+    branches['level_branch_name'] = branches['branch_level'] + branches['branch_name'] # this still allows for duplicate brnahc names at the same level in different areas of the taxonomy to be treated as the same taxon_branch
+
+    if branch:
+        if level in ('level1', 'level2', 'level3', 'level4', 'level5'):
+            df = branches.loc[branches.branch_level==level+'taxon'].copy()
+            df[df.branch_level==level+'taxon'].drop_duplicates(subset=['content_id', 'branch_name'],
+                                                                                   inplace=True)
+        else:                   # should only be 'agnostic'
+            df.drop_duplicates(subset=['content_id', 'level_branch_name'], inplace=true)
+            # creating categorical variable for level2taxons from values
+    
+        
+    if not branch:
+        if level=='level1':
+            df = labelled.loc[labelled['level']==1].copy()
+        elif level=='level2':
+            df = labelled.loc[labelled['level']==2].copy()
+        elif level=='level3':
+            df = labelled.loc[labelled['level']==3].copy()
+        elif level=='level4':
+            df = labelled.loc[labelled['level']==4].copy()
+        elif level=='level5':
+            df = labelled.loc[labelled['level']==5].copy()
+
+    create_taxon_codes(df, branch=branch, level=level)
+    save_taxon_label_index(df, branch=branch, level=level)
+    
+    df['first_published_at'] = pd.to_datetime(df['first_published_at'])
+    df.index = df['first_published_at']
+    
+    df = df[df['first_published_at'] >= pd.Timestamp(SINCE_THRESHOLD)].copy()
+
     # count the number of taxons per content item into new column
-    dataframe['num_taxon_per_content'] = dataframe.groupby(
-        ["content_id"]
-    )['content_id'].transform("count")
+    df['num_taxon_per_content'] = df.groupby(["content_id"])['content_id'].transform("count")
 
-    dataframe['first_published_at'] = pd.to_datetime(dataframe['first_published_at'])
-    dataframe.index = dataframe['first_published_at']
-    
-    dataframe = dataframe[dataframe['first_published_at'] >= pd.Timestamp(SINCE_THRESHOLD)].copy()
+    return df
 
-    return dataframe
+def create_taxon_codes(df, branch=True, level='level2'):
 
-def save_taxon_label_index(dataframe, level='level2'):
+    if branch==True:
+        df['taxon_category'] = df.branch_name.copy()
+    if (branch==False and level!='agnostic'):
+        df['taxon_category'] = df[level+'taxon'].copy()
+    if (branch==False and level=='agnostic'):
+        df['taxon_category'] = df['taxon_id'].copy()
 
-    if level=='level1' or level=='level2':
-        # create dictionary of taxon category code to string label for use in model evaluation
-        labels_index = dict(zip((dataframe[level+'taxon_code']), dataframe[level+'taxon']))
-    else:
+
+    df.loc[:, 'taxon_code'] = df['taxon_category'].astype('category').cat.codes + 1
+    logging.info('Number of unique {}taxons: {}'.format(level, df['taxon_category'].nunique()))
+
+    return df     
+ 
+
+def save_taxon_label_index(dataframe, level='level2', branch=True):
+    if branch==True:
+        labels_index = dict(zip((dataframe['taxon_code']), dataframe['branch_name']))
+    if (not branch and level!='agnostic'):
+        labels_index = dict(zip((dataframe['taxon_code']), dataframe[level+'taxon']))
+    if (not branch and level=='agnostic'):
         labels_index = dict(zip((dataframe['taxon_code']), dataframe['taxon_base_path']))
         taxonid_index = dict(zip((dataframe['taxon_code']), dataframe['taxon_id']))
+
+        with open(os.path.join(DATADIR, level+"taxon_id_index.json"),'w') as f:
+            json.dump(taxonid_index, f)
+
 
     with open(os.path.join(DATADIR, level+"taxon_labels_index.json"),'w') as f:
         json.dump(labels_index, f)
 
-    with open(os.path.join(DATADIR, level+"taxon_id_index.json"),'w') as f:
-        json.dump(taxonid_index, f)
+   
 
 
-def create_binary_multilabel(dataframe, taxon_code_column='level2taxon_code'):
+def create_binary_multilabel(dataframe):
     """reshapes data long -> wide by taxon. keeps the combined text so indexing is consistent when splitting X from Y"""
     multilabel = dataframe.pivot_table(
             index=[
@@ -96,11 +143,11 @@ def create_binary_multilabel(dataframe, taxon_code_column='level2taxon_code'):
                 'title',
                 'description'
             ],
-            columns=taxon_code_column,
+            columns='taxon_code',
             values='num_taxon_per_content'
         )
 
-    print('labelled_{} shape: {}'.format(taxon_code_column, dataframe.shape))
+    print('labelled_{} shape: {}'.format('taxon_code', dataframe.shape))
     print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
 
 
