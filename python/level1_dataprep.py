@@ -26,39 +26,6 @@ DATADIR = os.getenv('DATADIR')
 SINCE_THRESHOLD = os.getenv('SINCE_THRESHOLD')
 METADATA_LIST = os.getenv('METADATA_LIST').split()
 
-def load_labelled_level1(SINCE_THRESHOLD):
-    dataframe = pd.read_csv(
-        os.path.join(DATADIR, 'labelled.csv.gz'),
-        dtype=object,
-        compression='gzip'
-    )
-
-    logging.info('dataframe shape={}'.format(dataframe.shape))
-    print(dataframe.columns)
-    # creating categorical variable for level2taxons from values
-    dataframe['level1taxon'] = dataframe['level1taxon'].astype('category')
-
-    # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
-    dataframe['level1taxon_code'] = dataframe.level1taxon.astype('category').cat.codes + 1
-
-    labels_index = dict(zip((dataframe['level1taxon_code']), dataframe['level1taxon']))
-
-    with open(os.path.join(DATADIR, "level1taxon_labels_index.json"),'w') as f:
-        json.dump(labels_index, f) 
-
-    logging.info('Number of unique level1taxons: {}'.format(dataframe.level1taxon.nunique()))
-
-    # count the number of taxons per content item into new column
-    dataframe['num_taxon_per_content'] = dataframe.groupby(
-        ["content_id"]
-    )['content_id'].transform("count")
-
-    dataframe['first_published_at'] = pd.to_datetime(dataframe['first_published_at'])
-    dataframe.index = dataframe['first_published_at']
-    
-    dataframe = dataframe[dataframe['first_published_at'] >= pd.Timestamp(SINCE_THRESHOLD)].copy()
-
-    return dataframe
 
 if __name__ == "__main__":
 
@@ -67,10 +34,10 @@ if __name__ == "__main__":
     logger = logging.getLogger('level1_dataprep')
 
     logger.info('Loading data')
-    labelled_level1 = load_labelled_level1(SINCE_THRESHOLD)
+    labelled_level1 = load_labelled(SINCE_THRESHOLD, level='level1')
 
     logger.info('Creating multilabel dataframe')
-    binary_multilabel = create_binary_multilabel(labelled_level1, level=1)
+    binary_multilabel = create_binary_multilabel(labelled_level1, taxon_code_column='level1taxon_code')
     print(binary_multilabel.columns)
 
     np.save(os.path.join(DATADIR, 'level1_taxon_codes.npy'), binary_multilabel.columns)
