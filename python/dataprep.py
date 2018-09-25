@@ -85,6 +85,8 @@ def load_labelled(SINCE_THRESHOLD, level='level2', branch=True):
             df = labelled.loc[labelled['level']==4].copy()
         elif level=='level5':
             df = labelled.loc[labelled['level']==5].copy()
+        else:
+            df = labelled.copy()
 
     create_taxon_codes(df, branch=branch, level=level)
     save_taxon_label_index(df, branch=branch, level=level)
@@ -167,7 +169,7 @@ def create_binary_multilabel(dataframe):
     return binary_multi
 
 
-def upsample_low_support_taxons(dataframe, size_train):
+def upsample_low_support_taxons(dataframe, size_train, n_samples=500):
     # extract indices of training samples, which are to be upsampled
 
     training_indices = [dataframe.index[i][0] for i in range(0, size_train)]
@@ -179,7 +181,6 @@ def upsample_low_support_taxons(dataframe, size_train):
         training_samples_tagged_to_taxon = dataframe[
                                                dataframe[taxon] == 1
                                                ][:size_train]
-
         if training_samples_tagged_to_taxon.shape[0] < 500:
             logging.info("Taxon code: %s", taxon)
             logging.info("SMALL SUPPORT: %s", training_samples_tagged_to_taxon.shape[0])
@@ -189,7 +190,7 @@ def upsample_low_support_taxons(dataframe, size_train):
                 logging.info(df_minority.shape)
                 df_minority_upsampled = resample(df_minority,
                                                  replace=True,  # sample with replacement
-                                                 n_samples=(500),
+                                                 n_samples=(n_samples),
                                                  # to match majority class, switch to max_content_freq if works
                                                  random_state=123)  # reproducible results
                 # logging.info("FIRST 5 IDs: %s", [df_minority_upsampled.index[i][0] for i in range(0, 5)])

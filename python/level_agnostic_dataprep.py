@@ -26,10 +26,10 @@ if __name__ == "__main__":
     logger = logging.getLogger('levelagnostic_dataprep')
 
     logger.info('Loading data')
-    labelled = load_labelled(SINCE_THRESHOLD, level='agnostic')
+    labelled = load_labelled(SINCE_THRESHOLD, level='agnostic', branch=False)
 
     logger.info('Creating multilabel dataframe')
-    binary_multilabel = create_binary_multilabel(labelled, taxon_code_column='taxon_code')
+    binary_multilabel = create_binary_multilabel(labelled)
    
     print(binary_multilabel.columns)
 
@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     logger.info('Upsample low support taxons')
 
-    balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel, size_train)
+    balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel, size_train, n_samples=50)
 
     logger.info("Shape of balanced_df: {}".format(balanced_df.shape))
     
