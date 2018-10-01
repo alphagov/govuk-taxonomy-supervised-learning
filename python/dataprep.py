@@ -70,7 +70,7 @@ def load_labelled(SINCE_THRESHOLD, level='level2', branch=True):
             df[df.branch_level==level+'taxon'].drop_duplicates(subset=['content_id', 'branch_name'],
                                                                                    inplace=True)
         else:                   # should only be 'agnostic'
-            df.drop_duplicates(subset=['content_id', 'level_branch_name'], inplace=true)
+            df = branches.drop_duplicates(subset=['content_id', 'level_branch_name']).copy()
             # creating categorical variable for level2taxons from values
     
         
