@@ -20,6 +20,9 @@ labelled : $(DATADIR)/labelled.csv.gz
 dataprep: $(DATADIR)/train_arrays.npz $(DATADIR)/test_arrays.npz $(DATADIR)/dev_arrays.npz
 export_all: data/export_filtered_content.json.gz data/export_untagged_content.json.gz data/taxons.json
 
+contextual_sidebar_metrics: data/content.json.gz
+	python3 -u -c "from measurement.contextual_sidebar_metrics import contextual_sidebar_metrics; contextual_sidebar_metrics()"
+
 measure_average_taxons: data/content.json.gz
 	cd python && python3 -u -c "from measurement.average_taxons import measure_average_taxons; measure_average_taxons(filename='../data/content.json.gz')"
 
@@ -90,7 +93,13 @@ clean_all : clean
 	    $(DATADIR)/raw_taxons.json $(DATADIR)/raw_content.json.gz
 
 pip_install:
-	pip3 install -r python/requirements.txt
+	if [ -d "/usr/local/cuda-8.0" ]; then \
+		echo "Using GPU requirements"; \
+		pip3 install -r python/base-requirements.txt -r python/gpu-requirements.txt ; \
+	else \
+		echo "Using CPU requirements"; \
+		pip3 install -r python/base-requirements.txt -r python/cpu-requirements.txt ; \
+	fi
 
 check:
 	cd python && python3 -m pytest

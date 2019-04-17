@@ -22,28 +22,86 @@ warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
 DATADIR = os.getenv('DATADIR')
 METADATA_LIST = env_list = json.loads(os.environ['METADATA_LIST'])
+SINCE_THRESHOLD = os.getenv('SINCE_THRESHOLD')
 
-
-# **** RESHAPE data long -> wide by taxon *******
-# ***********************************************
-
-# reshape to wide per taxon and keep the combined text so indexing is consistent when splitting X from Y
-
-
-def create_binary_multilabel(dataframe):
-    multilabel = dataframe.pivot_table(
-        index=[
-            'content_id',
-            'combined_text',
-            'title',
-            'description'
-        ],
-        columns='level2taxon_code',
-        values='num_taxon_per_content'
+def load_labelled(SINCE_THRESHOLD, level='level2'):
+    if level=='agnostic' or level=='level1':
+        dataframe = pd.read_csv(
+        os.path.join(DATADIR, 'labelled.csv.gz'),
+        dtype=object,
+        compression='gzip'
+         )
+    else:
+        dataframe = pd.read_csv(
+        os.path.join(DATADIR, 'labelled_level2.csv.gz'),
+        dtype=object,
+        compression='gzip'
     )
 
-    logger.info('labelled_level2 shape: {}'.format(dataframe.shape))
-    logger.info('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
+    if level=='level2':
+        # Create World taxon in case any items not identified
+        # through doc type in clean_content are still present
+        dataframe.loc[dataframe['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
+
+    if level=='level1' or level=='level2':
+        # creating categorical variable for level2taxons from values
+        dataframe[level+'taxon'] = dataframe[level+'taxon'].astype('category')
+
+        # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
+        dataframe[level+'taxon_code'] = dataframe[level+'taxon'].astype('category').cat.codes + 1
+        logging.info('Number of unique {}taxons: {}'.format(level, dataframe[level+'taxon'].nunique()))
+
+    else:
+        dataframe['taxon_id'] = dataframe['taxon_id'].astype('category')
+        dataframe['taxon_code'] =  dataframe.taxon_id.astype('category').cat.codes + 1
+        logging.info('Number of unique {}taxons: {}'.format(level, dataframe['taxon_id'].nunique()))
+
+    save_taxon_label_index(dataframe, level=level)
+    
+    # count the number of taxons per content item into new column
+    dataframe['num_taxon_per_content'] = dataframe.groupby(
+        ["content_id"]
+    )['content_id'].transform("count")
+
+    dataframe['first_published_at'] = pd.to_datetime(dataframe['first_published_at'])
+    dataframe.index = dataframe['first_published_at']
+    
+    dataframe = dataframe[dataframe['first_published_at'] >= pd.Timestamp(SINCE_THRESHOLD)].copy()
+
+    return dataframe
+
+def save_taxon_label_index(dataframe, level='level2'):
+
+    if level=='level1' or level=='level2':
+        # create dictionary of taxon category code to string label for use in model evaluation
+        labels_index = dict(zip((dataframe[level+'taxon_code']), dataframe[level+'taxon']))
+    else:
+        labels_index = dict(zip((dataframe['taxon_code']), dataframe['taxon_base_path']))
+        taxonid_index = dict(zip((dataframe['taxon_code']), dataframe['taxon_id']))
+
+    with open(os.path.join(DATADIR, level+"taxon_labels_index.json"),'w') as f:
+        json.dump(labels_index, f)
+
+    with open(os.path.join(DATADIR, level+"taxon_id_index.json"),'w') as f:
+        json.dump(taxonid_index, f)
+
+
+def create_binary_multilabel(dataframe, taxon_code_column='level2taxon_code'):
+    """reshapes data long -> wide by taxon. keeps the combined text so indexing is consistent when splitting X from Y"""
+    multilabel = dataframe.pivot_table(
+            index=[
+                'content_id',
+                'combined_text',
+                'title',
+                'description'
+            ],
+            columns=taxon_code_column,
+            values='num_taxon_per_content'
+        )
+
+    print('labelled_{} shape: {}'.format(taxon_code_column, dataframe.shape))
+    print('multilabel (pivot table - no duplicates): {} '.format(multilabel.shape))
+
 
     multilabel.columns.astype('str')
 
@@ -63,41 +121,40 @@ def create_binary_multilabel(dataframe):
     return binary_multi
 
 
-def upsample_low_support_taxons(dataframe):
+def upsample_low_support_taxons(dataframe, size_train):
     # extract indices of training samples, which are to be upsampled
 
     training_indices = [dataframe.index[i][0] for i in range(0, size_train)]
 
     upsampled_training = pd.DataFrame()
-    last_taxon = len(dataframe.columns) + 1
 
-    for taxon in range(1, last_taxon):
+    for taxon in dataframe.columns:
 
         training_samples_tagged_to_taxon = dataframe[
                                                dataframe[taxon] == 1
                                                ][:size_train]
 
         if training_samples_tagged_to_taxon.shape[0] < 500:
-            logger.info("Taxon code: %s", taxon)
-            logger.info("SMALL SUPPORT: %s", training_samples_tagged_to_taxon.shape[0])
+            logging.info("Taxon code: %s", taxon)
+            logging.info("SMALL SUPPORT: %s", training_samples_tagged_to_taxon.shape[0])
             df_minority = training_samples_tagged_to_taxon
             if not df_minority.empty:
                 # Upsample minority class
-                logger.info(df_minority.shape)
+                logging.info(df_minority.shape)
                 df_minority_upsampled = resample(df_minority,
                                                  replace=True,  # sample with replacement
                                                  n_samples=(500),
                                                  # to match majority class, switch to max_content_freq if works
                                                  random_state=123)  # reproducible results
-                logger.info("FIRST 5 IDs: %s", [df_minority_upsampled.index[i][0] for i in range(0, 5)])
+                # logging.info("FIRST 5 IDs: %s", [df_minority_upsampled.index[i][0] for i in range(0, 5)])
                 # Combine majority class with upsampled minority class
                 upsampled_training = pd.concat([upsampled_training, df_minority_upsampled])
                 # Display new shape
-                logger.info("UPSAMPLING: %s", upsampled_training.shape)
+                logging.info("UPSAMPLING: %s", upsampled_training.shape)
 
     upsampled_training = shuffle(upsampled_training, random_state=0)
 
-    logger.info("Size of upsampled_training: {}".format(upsampled_training.shape[0]))
+    logging.info("Size of upsampled_training: {}".format(upsampled_training.shape[0]))
 
     balanced = pd.concat([upsampled_training, dataframe])
     balanced.astype(int)
@@ -188,6 +245,7 @@ def create_meta(dataframe_column, orig_df):
             0
         )
 
+
         last_5years = np.where(
             (
                     (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
@@ -207,6 +265,7 @@ def create_meta(dataframe_column, orig_df):
             1,
             0
         )
+
 
     meta_arrays = []
     if "document_type" in METADATA_LIST:
@@ -284,36 +343,8 @@ def process_split(
         os.path.join(DATADIR, '{}_arrays.npz'.format(split_name)),
         **split_data
     )
+    
 
-
-def load_labelled_level2():
-    dataframe = pd.read_csv(
-        os.path.join(DATADIR, 'labelled_level2.csv.gz'),
-        dtype=object,
-        compression='gzip'
-    )
-
-    # Create World taxon in case any items not identified
-    # through doc type in clean_content are still present
-    dataframe.loc[dataframe['level1taxon'] == 'World', 'level2taxon'] = 'world_level1'
-
-    # **** TAXONS TO CATEGORICAL -> DICT **********
-    # *********************************************
-
-    # creating categorical variable for level2taxons from values
-    dataframe['level2taxon'] = dataframe['level2taxon'].astype('category')
-
-    # Add 1 because of zero-indexing to get 1-number of level2taxons as numerical targets
-    dataframe['level2taxon_code'] = dataframe.level2taxon.astype('category').cat.codes + 1
-
-    logging.info('Number of unique level2taxons: {}'.format(dataframe.level2taxon.nunique()))
-
-    # count the number of taxons per content item into new column
-    dataframe['num_taxon_per_content'] = dataframe.groupby(
-        ["content_id"]
-    )['content_id'].transform("count")
-
-    return dataframe
 
 
 if __name__ == "__main__":
@@ -323,10 +354,13 @@ if __name__ == "__main__":
     logger = logging.getLogger('dataprep')
 
     logger.info('Loading data')
-    labelled_level2 = load_labelled_level2()
+    labelled_level2 = load_labelled(SINCE_THRESHOLD)
 
     logger.info('Creating multilabel dataframe')
     binary_multilabel = create_binary_multilabel(labelled_level2)
+
+    np.save(os.path.join(DATADIR, 'taxon_codes.npy'), binary_multilabel.columns)
+    taxon_codes = binary_multilabel.columns
 
     # ***** RESAMPLING OF MINORITY TAXONS **************
     # ****************************************************
@@ -344,7 +378,7 @@ if __name__ == "__main__":
 
     logger.info('Upsample low support taxons')
 
-    balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel)
+    balanced_df, upsample_size = upsample_low_support_taxons(binary_multilabel, size_train)
 
     size_train += upsample_size
 

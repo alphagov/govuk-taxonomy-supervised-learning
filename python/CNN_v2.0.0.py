@@ -5,25 +5,33 @@
 
 # Based on:
 # https://blog.keras.io/using-pre-trained-word-embeddings-in-a-keras-model.html
+import os
+MODEL_NAME = os.getenv('EXPERIMENT_NAME')
+DATADIR = os.getenv('DATADIR')
+COMET_API_KEY = os.getenv("COMET_API_KEY")
+print('algorithm running on data extracted from content store on {}'.format(DATADIR))
 
 # ### Load requirements and data
-import os
-
+from comet_ml import Experiment
 from tokenizing import load_tokenizer_from_file
 from algorithm_functions import f1, to_file, WeightedBinaryCrossEntropy
 
 import numpy as np
+import pandas as pd
 
 from keras.callbacks import EarlyStopping
 from keras.layers import (Embedding, Input, Dense, Dropout, 
                           Activation, Conv1D, MaxPooling1D, Flatten, concatenate, Reshape)
 from keras.models import Model, Sequential
-from sklearn.metrics import precision_recall_fscore_support, classification_report
+from sklearn.metrics import precision_recall_fscore_support, classification_report, f1_score
 
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
+rcParams.update({'figure.autolayout': True})
+import json
 
-
-DATADIR = os.getenv('DATADIR')
-print('algorithm running on data extracted from content store on {}'.format(DATADIR))
+experiment = Experiment(api_key=COMET_API_KEY, project_name='govuk_taxonomy_level2')
+experiment.set_name(MODEL_NAME)
 
 
 # ## Hyperparameters
@@ -165,7 +173,7 @@ history = model.fit(
     {'meta': meta_train, 'titles': title_train, 'descs': desc_train, 'wordindex': x_train},
     y_train, 
     validation_data=([meta_dev, title_dev, desc_dev, x_dev], y_dev), 
-    epochs=10, batch_size=128, callbacks=[early_stopping]
+    epochs=10, batch_size=128, callbacks=[early_stopping], verbose=2
 )
 
 
@@ -173,17 +181,17 @@ history = model.fit(
 # history_dict.keys()
 # loss_values = history_dict['loss']
 # val_loss_values = history_dict['val_loss']
-#
-#
-#
+
+
 # plt.plot(range(len(loss_values)), loss_values, 'bo', label='Training loss')
 # plt.plot(range(len(val_loss_values)), val_loss_values, 'b', label='Validation loss')
 # plt.title('Training and validation loss')
 # plt.xlabel('Epochs')
 # plt.ylabel('Loss')
 # plt.legend()
-#
-# plt.show()
+# experiment.log_figure(figure_name='loss', figure=plt)
+
+# plt.savefig(os.path.join(DATADIR, 'loss.png'))
 #
 # plt.clf()
 #
@@ -203,31 +211,124 @@ history = model.fit(
 # ### 4. Save results arrays
 
 # Train
-y_prob = model.predict([meta_train, title_train, desc_train, x_train])
-to_file(y_prob, "train_results", y_train)
+with experiment.train():
+    y_prob = model.predict([meta_train, title_train, desc_train, x_train])
+    to_file(y_prob, "train_results", y_train)
 
-y_pred = y_prob.copy()
-y_pred[y_pred >= P_THRESHOLD] = 1
-y_pred[y_pred < P_THRESHOLD] = 0
+    y_pred = y_prob.copy()
+    y_pred[y_pred >= P_THRESHOLD] = 1
+    y_pred[y_pred < P_THRESHOLD] = 0
 
-print('train micro: {}'.format(precision_recall_fscore_support(y_train, y_pred, average='micro', sample_weight=None)))
-print('train macro: {}'.format(precision_recall_fscore_support(y_train, y_pred, average='macro', sample_weight=None)))
-print('train weightedmacro: {}'.format(precision_recall_fscore_support(y_train, y_pred, average='weighted', sample_weight=None)))
+    print('train micro: {}'.format(precision_recall_fscore_support(y_train, y_pred, average='micro', sample_weight=None)))
+    print('train macro: {}'.format(precision_recall_fscore_support(y_train, y_pred, average='macro', sample_weight=None)))
+    print('train weightedmacro: {}'.format(precision_recall_fscore_support(y_train, y_pred, average='weighted', sample_weight=None)))
+
+    train_metrics = {
+        "train_micro":f1_score(y_train, y_pred, average='micro', sample_weight=None),
+        "train_macro":f1_score(y_train, y_pred, average='macro', sample_weight=None),
+        "train_weighted_macro":f1_score(y_train, y_pred, average='weighted', sample_weight=None)
+        }
+
+    experiment.log_multiple_metrics(train_metrics)
 
 # Dev
-y_prob_dev = model.predict([meta_dev, title_dev, desc_dev, x_dev])
-to_file(y_prob_dev, "dev_results", y_train)
+with experiment.validate():
+    y_prob_dev = model.predict([meta_dev, title_dev, desc_dev, x_dev])
+    to_file(y_prob_dev, "dev_results", y_train)
 
-y_pred_dev = y_prob_dev.copy()
-y_pred_dev[y_pred_dev >= P_THRESHOLD] = 1
-y_pred_dev[y_pred_dev < P_THRESHOLD] = 0
+    y_pred_dev = y_prob_dev.copy()
+    y_pred_dev[y_pred_dev >= P_THRESHOLD] = 1
+    y_pred_dev[y_pred_dev < P_THRESHOLD] = 0
 
-print('dev micro: {}'.format(precision_recall_fscore_support(y_dev, y_pred_dev, average='micro', sample_weight=None)))
-print('dev macro: {}'.format(precision_recall_fscore_support(y_dev, y_pred_dev, average='macro', sample_weight=None)))
-print('dev weightedmacro: {}'.format(precision_recall_fscore_support(y_dev, y_pred_dev, average='weighted', sample_weight=None)))
+    print('dev micro: {}'.format(precision_recall_fscore_support(y_dev, y_pred_dev, average='micro', sample_weight=None)))
+    print('dev macro: {}'.format(precision_recall_fscore_support(y_dev, y_pred_dev, average='macro', sample_weight=None)))
+    print('dev weightedmacro: {}'.format(precision_recall_fscore_support(y_dev, y_pred_dev, average='weighted', sample_weight=None)))
 
 
-print('dev weightedmacro: {}'.format(precision_recall_fscore_support(y_dev, y_pred_dev, average=None, sample_weight=None)))
+    print('dev unweighted F1: {}'.format(precision_recall_fscore_support(y_dev, y_pred_dev, average=None, sample_weight=None)))
+
+    dev_metrics = {
+        "dev_micro":f1_score(y_dev, y_pred_dev, average='micro', sample_weight=None),
+        "dev_macro":f1_score(y_dev, y_pred_dev, average='macro', sample_weight=None),
+        "dev_weighted_macro":f1_score(y_dev, y_pred_dev, average='weighted', sample_weight=None)
+        }
+
+    experiment.log_multiple_metrics(dev_metrics)
+
+print('loading taxon_codes and labels_index')
+taxon_codes = pd.Series(np.load(os.path.join(DATADIR, 'taxon_codes.npy')))
+
+with open(os.path.join(DATADIR, "taxon_labels_index.json"), 'r') as f:
+    labels_index = json.load(f, object_hook=lambda d: {int(k): [int(i) for i in v] if isinstance(v, list) else v for k, v in d.items()})
+
+print('creating plotting_metrics dataframe')
+dev_f1s = pd.Series(f1_score(y_dev, y_pred_dev, average=None, sample_weight=None))
+
+plotting_metrics = pd.concat([pd.concat([pd.DataFrame(np.sum(y_train, axis=0)),
+                              pd.DataFrame(np.sum(y_dev, axis=0))]).transpose(),
+                              taxon_codes,
+                              dev_f1s], axis=1)
+      
+plotting_metrics.columns = ['train_support', 'dev_support', 'taxon_code', 'dev_f1']
+plotting_metrics['taxon_label'] = plotting_metrics['taxon_code'].map(labels_index)
+plotting_metrics = plotting_metrics.sort_values('dev_f1', ascending=False)
+print('logging plotting_metrics dataframe to html table')
+experiment.log_html(plotting_metrics.to_html())
+# dev_f1 = plotting_metrics.sort_values('dev_f1', ascending=False).plot(x='taxon_label',
+#                                                                       y='dev_f1',
+#                                                                       kind = 'barh',
+#                                                                       figsize=(10,30),
+#                                                                       legend=False,
+#                                                                       title='F1 score by taxon',
+#                                                                       color='#2B8CC4')
+
+# dev_f1, ax = plt.subplots(figsize=(10, 30))	
+# ax.barh(plotting_metrics['taxon_label'].values, plotting_metrics['dev_f1'].values, color='#2B8CC4')
+# experiment.log_figure(figure_name='dev_f1_scores', figure=dev_f1)
+# plt.close()
+
+# train_support = plotting_metrics.sort_values('dev_f1', ascending=False).plot(x='taxon_label',
+#                                                                              y='train_support',
+#                                                                              kind = 'barh',
+#                                                                              figsize=(10,30),
+#                                                                              legend=False,
+#                                                                              title='F1 score by taxon',
+#                                                                              color='#4C2C92').get_figure()
+
+# dev_support = plotting_metrics.sort_values('dev_f1', ascending=False).plot(x='taxon_label',
+#                                                                            y='dev_support',
+#                                                                            kind = 'barh',
+#                                                                            figsize=(10,30),
+#                                                                            legend=False,
+#                                                                            title='F1 score by taxon',
+#                                                                            color='#00823B').get_figure()
+                             
+
 
 to_file(y_train, "true_train", y_train)
 to_file(y_dev, "true_dev", y_train)
+
+print('saving model')
+model.save(os.path.join(DATADIR, MODEL_NAME))
+
+# experiment.log_figure(figure_name='dev_support', figure=train_support)
+# experiment.log_figure(figure_name='train_support', figure=dev_support)
+
+print('logging experiment parameters')
+params={
+    "max_sequence_length":MAX_SEQUENCE_LENGTH,
+    "embedding_dim":EMBEDDING_DIM,
+    "p_threshold":P_THRESHOLD,
+    "pos_ratio":POS_RATIO,
+    "num_words":NUM_WORDS,
+    "datadir":DATADIR,
+    "metadata":os.getenv('METADATA_LIST'),
+    "Data_since":os.getenv('SINCE_THRESHOLD')
+        }
+
+experiment.log_multiple_params(params)
+
+experiment.log_other("datadir", DATADIR)
+experiment.log_other("metadata", os.getenv('METADATA_LIST'))
+experiment.log_other("data_since", os.getenv('SINCE_THRESHOLD'))
+experiment.log_dataset_hash(x_train)
