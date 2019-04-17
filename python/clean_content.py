@@ -13,8 +13,6 @@ from tokenizing import create_and_save_tokenizer
 import yaml
 from data import *
 
-
-
 # Setup pipeline logging
 
 LOGGING_CONFIG = os.getenv('LOGGING_CONFIG')
@@ -121,7 +119,7 @@ def process_content_item(content_item, clean_content_writer, content_to_taxon_ma
     # Get content_id, taxon_id pairs and write to csv
     content_to_taxon_map_writer.writerows(map_content_id_to_taxon_id(content_item))
 
-    clean_content_writer.writerow(content_item.get(x) for x in HEADER_LIST)
+    clean_content_writer.writerow([content_item.get(x) for x in HEADER_LIST])
 
     metadata.document_types.add(content_item['document_type'])
     metadata.publishing_apps.add(content_item['publishing_app'])
