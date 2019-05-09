@@ -21,9 +21,8 @@ import json
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
 DATADIR = os.getenv('DATADIR')
+METADATA_LIST = env_list = json.loads(os.environ['METADATA_LIST'])
 SINCE_THRESHOLD = os.getenv('SINCE_THRESHOLD')
-METADATA_LIST = os.getenv('METADATA_LIST').split()
-
 
 def load_labelled(SINCE_THRESHOLD, level='level2'):
     if level=='agnostic' or level=='level1':
@@ -246,6 +245,7 @@ def create_meta(dataframe_column, orig_df):
             0
         )
 
+
         last_5years = np.where(
             (
                     (np.datetime64('today', 'D') - first_published).astype('timedelta64[Y]')
@@ -265,6 +265,7 @@ def create_meta(dataframe_column, orig_df):
             1,
             0
         )
+
 
     meta_arrays = []
     if "document_type" in METADATA_LIST:

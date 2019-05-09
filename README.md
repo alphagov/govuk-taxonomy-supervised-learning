@@ -24,68 +24,33 @@ The Makefile assumes that the `python3` command is pointing to the correct distr
 
 ## Getting the data
 
-The following data files are used in this project.
+The taxonomy pipeline script runs on the GOV.UK Deploy Jenkins machine:
+```https://deploy.publishing.service.gov.uk/job/govuk_taxonomy_supervised_learning/```
 
-|Name|Location|Description|Size|
-|---|---|---|---|
-|raw_taxons.json|s3://buod-govuk-taxonomy-supervised-learning/raw_taxons.json|List of taxons|1.1MB|
-|raw_content.json.gz|s3://buod-govuk-taxonomy-supervised-learning/raw_content.json|Content of GOV.UK (zipped to save space)|224MB|
-|document_type_group_lookup.json|s3://buod-govuk-taxonomy-supervised-learning/document_type_group_lookup.json|Lookup table for document type groups|2KB|
+It runs every weekday starting at 2 AM and usually takes a long time to finish.
 
-You will need access to the `s3://govuk-taxonomy-supervised-learning` S3 bucket to access these files, which requires programmatic access to Amazon Web Services (AWS). Once a key has been created for you, you will need to install the AWS command line interface (CLI), which can be done with:
+The content.json.gz and taxon.json.gz files are the raw data files downloaded from the live site and can be downloaded by using scp:
 
-`brew install aws`
+```scp deploy.publishing.service.gov.uk:/var/lib/jenkins/workspace/govuk_taxonomy_supervised_learning/data/* .```
 
-Then configure an AWS CLI profile with:
+These files need to be moved to DATADIR
 
-`aws configure --profile gds-data`
-
-When asked to set a default region set `eu-west-2` (London), and default format `json`.
-
-If these files do not exist in DATADIR, they will be created by the Makefile by running `make`.
-
-### Manual download
-
-If necessary, files `raw_content.json`, `raw_taxons.json`, and `document_type_group_lookup.json` can be downloaded manually from the S3 bucket using the `aws s3 cp` command. This command works exactly like the bash `cp`, e.g.: to copy a file from the s3 bucket to your local machine:
-
-```
-aws s3 cp s3://buod-govuk-taxonomy-supervised-learning/<file> <local file>
-```
-
-To copy a local file to the s3 bucket, use:
-
-```
-aws s3 cp s3://buod-govuk-taxonomy-supervised-learning/<file> <local file>
-```
-
-Assuming you have set your `S3BUCKET` env variable, you can also just do:
-
-```
-aws s3 cp $S3BUCKET/<file> <local file>
-```
-
-__NOTE: The s3 bucket is version controlled, so if writing to the bucket, you do not need to rename the files to reflect the date files were produced. Just overwrite the existing file with the same filename.__
-
-Some files are stored compressed like `raw_content.json.gz`. Do not decompress these files, as the data cleaning scripts will load the data from the compressed files automatically.
 
 ## Running the cleaning scripts
 
-After setting environment variables and installing the AWS CLI, running `make` will download the data and launch the cleaning scripts in order. The following files are created by the various cleaning scripts:
+After setting environment variables and obtaining the raw data files saved in DATADIR, running `make` will download the data and launch the cleaning scripts in order. The following files are created by the various cleaning scripts:
 
-|Filename (data/)|produced by (python/)|
-|---|---|
-|clean_taxons.csv|clean_taxons.py|
-|clean_content.csv|clean_content.py|
-|untagged_content.csv|clean_content.py|
-|empty_taxons.csv|create_labelled.py|
-|labelled.csv|create_labelled.py|
-|filtered.csv|create_labelled.py|
-|old_taxons.csv|create_labelled.py|
-|empty_taxons.csv|create_labelled.py|
-|labelled_level1.csv|create_labelled.py|
-|labelled_level2.csv|create_labelled.py|
-|empty_taxons_not_world.csv|create_labelled.py|
-|new_content.csv|create_new.py|
+|source filename (data/)|output filename (data/)|produced by (python/)|
+|---|---|---|
+|taxons.json.gz|clean_taxons.csv.gz|clean_taxons.py|
+|content.json.gz|clean_content.csv|clean_content.py|
+|clean_taxons.csv.gz; clean_content.csv; content_to_taxon_map.csv|untagged.csv.gz|create_labelled.py|
+|clean_taxons.csv.gz; clean_content.csv; content_to_taxon_map.csv|empty_taxons.csv.gz|create_labelled.py|
+|clean_taxons.csv.gz; clean_content.csv; content_to_taxon_map.csv|labelled.csv.gz|create_labelled.py|
+|clean_taxons.csv.gz; clean_content.csv; content_to_taxon_map.csv|labelled_level1.csv.gz|create_labelled.py|
+|clean_taxons.csv.gz; clean_content.csv; content_to_taxon_map.csv|labelled_level2.csv.gz|create_labelled.py|
+|labelled*.csv.gz|*arrays.npz|dataprep.py|
+
     
 The following schematic describes the movement of data through the pipeline, and the role of each of the scripts.
 
