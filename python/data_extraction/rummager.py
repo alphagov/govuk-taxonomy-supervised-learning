@@ -3,10 +3,9 @@ from lib.helpers import merge
 from lib import plek
 import requests
 
-
 class Rummager():
 
-    def __init__(self, base_url=plek.find("rummager")):
+    def __init__(self, base_url=plek.find("search-api")):
         self.base_url = base_url
 
     def search_generator(self, args, page_size=100):

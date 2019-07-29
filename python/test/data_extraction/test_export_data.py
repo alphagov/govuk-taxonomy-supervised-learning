@@ -30,7 +30,7 @@ class TestExportData(unittest.TestCase):
         output = MockIO()
         responses.add(
             responses.GET,
-            "{}/search.json".format(plek.find("rummager")),
+            "{}/search.json".format(plek.find("search-api")),
             json=content_links
         )
         content_store_has_item(content_first['base_path'], json=content_first)
