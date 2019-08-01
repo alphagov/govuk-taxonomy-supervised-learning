@@ -19,7 +19,7 @@ node {
     govuk.setEnvar("VIRTUAL_ENV", "${pwd()}/venv")
     govuk.setEnvar("PATH", "${pwd()}/venv/bin:${env.PATH}")
     // A more recent version of pip is required to install tensorflow
-    sh("pip3 install pip==9.0.3")
+    sh("pip3 install pip==19.2.1")
   }
 
   stage('make pip_install') {

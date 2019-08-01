@@ -6,7 +6,7 @@ import requests
 
 def content_links_generator(page_size=1000,
                             additional_search_fields = {},
-                            rummager_url=plek.find('rummager'),
+                            rummager_url=plek.find('search-api'),
                             blacklist_document_types=[]):
     search_dict = merge({'reject_content_store_document_type': blacklist_document_types,
                          'fields': ['link'],
