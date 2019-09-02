@@ -7,6 +7,8 @@ virtualenv --python=python3 --no-site-packages ./venv
 export VIRTUAL_ENV="$PWD/venv"
 export PATH="$PWD/venv/bin:$PATH"
 export PYTHONPATH="python"
+export PLEK_SERVICE_SEARCH_API_URI=https://www.gov.uk/api
+export PLEK_SERVICE_CONTENT_STORE_URI=https://content-store.publishing.service.gov.uk
 
 pip3 install pip==9.0.3
 
